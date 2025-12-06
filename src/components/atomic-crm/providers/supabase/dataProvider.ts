@@ -350,44 +350,44 @@ const dataProviderWithCustomMethods = {
         
         // Also handle single services_interested@cs filter (not in @or)
         if (params.filter["services_interested@cs"] && !params.filter["@or"]) {
-        const servicesFilter = params.filter["services_interested@cs"];
-        delete params.filter["services_interested@cs"];
-        
-        const serviceIdMatch = servicesFilter?.match(/\{(\d+)\}/);
-        if (serviceIdMatch) {
-          // Fetch contacts that have this service
-          const { data: contacts } = await baseDataProvider.getList("contacts_summary", {
-            pagination: { page: 1, perPage: 1000 },
-            sort: { field: "id", order: "ASC" },
-            filter: { "services_interested@cs": servicesFilter },
-          });
+          const servicesFilter = params.filter["services_interested@cs"];
+          delete params.filter["services_interested@cs"];
           
-          const contactIds = contacts?.map((c: any) => c.id) || [];
-          
-          if (contactIds.length > 0) {
-            // If there's already an id@in filter, intersect them
-            if (params.filter["id@in"]) {
-              const existingIds = params.filter["id@in"]
-                .replace(/[()]/g, "")
-                .split(",")
-                .map((id: string) => parseInt(id.trim()))
-                .filter((id: number) => !isNaN(id));
-              
-              const intersection = existingIds.filter((id: number) => contactIds.includes(id));
-              
-              if (intersection.length > 0) {
-                params.filter["id@in"] = `(${intersection.join(",")})`;
+          const serviceIdMatch = servicesFilter?.match(/\{(\d+)\}/);
+          if (serviceIdMatch) {
+            // Fetch contacts that have this service
+            const { data: contacts } = await baseDataProvider.getList("contacts_summary", {
+              pagination: { page: 1, perPage: 1000 },
+              sort: { field: "id", order: "ASC" },
+              filter: { "services_interested@cs": servicesFilter },
+            });
+            
+            const contactIds = contacts?.map((c: any) => c.id) || [];
+            
+            if (contactIds.length > 0) {
+              // If there's already an id@in filter, intersect them
+              if (params.filter["id@in"]) {
+                const existingIds = params.filter["id@in"]
+                  .replace(/[()]/g, "")
+                  .split(",")
+                  .map((id: string) => parseInt(id.trim()))
+                  .filter((id: number) => !isNaN(id));
+                
+                const intersection = existingIds.filter((id: number) => contactIds.includes(id));
+                
+                if (intersection.length > 0) {
+                  params.filter["id@in"] = `(${intersection.join(",")})`;
+                } else {
+                  params.filter["id@in"] = "(-1)";
+                }
               } else {
-                params.filter["id@in"] = "(-1)";
+                params.filter["id@in"] = `(${contactIds.join(",")})`;
               }
             } else {
-              params.filter["id@in"] = `(${contactIds.join(",")})`;
+              params.filter["id@in"] = "(-1)";
             }
-          } else {
-            params.filter["id@in"] = "(-1)";
           }
         }
-      }
     }
     
     // Handle services_interested filter for lead-journey (deals) - filter through lead_id relationship
