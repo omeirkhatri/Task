@@ -5,7 +5,6 @@ import { ReferenceField } from "@/components/admin/reference-field";
 import { Card } from "@/components/ui/card";
 
 import { SimpleList } from "../simple-list/SimpleList";
-import { CompanyAvatar } from "../companies/CompanyAvatar";
 import { findDealLabel } from "../deals/deal";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Deal } from "../types";
@@ -18,7 +17,7 @@ export const DealsPipeline = () => {
   const { identity } = useGetIdentity();
   const { dealStages, dealPipelineStatuses } = useConfigurationContext();
   const { data, total, isPending } = useGetList<Deal>(
-    "deals",
+    "lead-journey",
     {
       pagination: { page: 1, perPage: 10 },
       sort: { field: "last_seen", order: "DESC" },
@@ -50,14 +49,14 @@ export const DealsPipeline = () => {
         </div>
         <Link
           className="text-xl font-semibold text-muted-foreground hover:underline"
-          to="/deals"
+          to="/lead-journey"
         >
           Deals Pipeline
         </Link>
       </div>
       <Card>
         <SimpleList<Deal>
-          resource="deals"
+          resource="lead-journey"
           linkType="show"
           data={getOrderedDeals(data)}
           total={total}
@@ -67,22 +66,11 @@ export const DealsPipeline = () => {
             `${deal.amount.toLocaleString("en-US", {
               notation: "compact",
               style: "currency",
-              currency: "USD",
+              currency: "AED",
               currencyDisplay: "narrowSymbol",
               minimumSignificantDigits: 3,
             })} , ${findDealLabel(dealStages, deal.stage)}`
           }
-          leftAvatar={(deal) => (
-            <ReferenceField
-              source="company_id"
-              record={deal}
-              reference="companies"
-              resource="deals"
-              link={false}
-            >
-              <CompanyAvatar width={20} height={20} />
-            </ReferenceField>
-          )}
         />
       </Card>
     </>

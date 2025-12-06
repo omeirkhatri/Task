@@ -11,6 +11,7 @@ import {
   useUpdate,
 } from "ra-core";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AutocompleteInput } from "@/components/admin/autocomplete-input";
 import { ReferenceInput } from "@/components/admin/reference-input";
 import { TextInput } from "@/components/admin/text-input";
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -34,6 +36,11 @@ import {
 
 import { contactOptionText } from "../misc/ContactOption";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import {
+  crmDateInputString,
+  crmDateStringToISO,
+  crmStartOfDay,
+} from "../misc/timezone";
 
 export const AddTask = ({
   selectContact,
@@ -49,6 +56,7 @@ export const AddTask = ({
   const { taskTypes } = useConfigurationContext();
   const contact = useRecordContext();
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
   const handleOpen = () => {
     setOpen(true);
   };
@@ -66,6 +74,11 @@ export const AddTask = ({
       previousData: contact.data,
     });
 
+    // Refresh activity log so the new task shows immediately (any scope)
+    queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        Array.isArray(queryKey) && queryKey[0] === "activityLog",
+    });
     notify("Task added");
   };
 
@@ -108,16 +121,20 @@ export const AddTask = ({
         record={{
           type: "None",
           contact_id: contact?.id,
-          due_date: new Date().toISOString().slice(0, 10),
+          due_date: crmDateInputString() || new Date().toISOString().slice(0, 10),
           sales_id: identity.id,
         }}
         transform={(data) => {
-          const dueDate = new Date(data.due_date);
-          dueDate.setHours(0, 0, 0, 0);
-          data.due_date = dueDate.toISOString();
+          const dueDateIso =
+            crmDateStringToISO(data.due_date) ||
+            crmStartOfDay()?.toISOString() ||
+            data.due_date;
+          // Don't include created_at - let the database default handle it
+          // This avoids schema cache issues if the column doesn't exist yet
+          const { created_at, ...restData } = data;
           return {
-            ...data,
-            due_date: new Date(data.due_date).toISOString(),
+            ...restData,
+            due_date: dueDateIso,
           };
         }}
         mutationOptions={{ onSuccess: handleSuccess }}
@@ -137,6 +154,9 @@ export const AddTask = ({
                     />
                   )}
                 </DialogTitle>
+                <DialogDescription>
+                  Add a new task with a description, due date, and type.
+                </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4">
                 <TextInput

@@ -1,72 +1,140 @@
 import { useMutation } from "@tanstack/react-query";
-import { format, isValid } from "date-fns";
-import { Archive, ArchiveRestore } from "lucide-react";
+import { Archive, ArchiveRestore, Phone, Mail, MapPin, Stethoscope } from "lucide-react";
 import {
   ShowBase,
   useDataProvider,
+  useGetList,
+  useGetOne,
   useNotify,
   useRecordContext,
   useRedirect,
   useRefresh,
   useUpdate,
+  RecordContextProvider,
+  useListContext,
 } from "ra-core";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { EditButton } from "@/components/admin/edit-button";
-import { ReferenceArrayField } from "@/components/admin/reference-array-field";
-import { ReferenceField } from "@/components/admin/reference-field";
 import { ReferenceManyField } from "@/components/admin/reference-many-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { subHours } from "date-fns";
 
-import { CompanyAvatar } from "../companies/CompanyAvatar";
-import { NoteCreate } from "../notes/NoteCreate";
 import { NotesIterator } from "../notes/NotesIterator";
+import { UnifiedNotesIterator } from "../notes/UnifiedNotesIterator";
 import { useConfigurationContext } from "../root/ConfigurationContext";
-import type { Deal } from "../types";
-import { ContactList } from "./ContactList";
+import type { Deal, Contact, DealNote, ContactNote } from "../types";
+import { TagsListEdit } from "../contacts/TagsListEdit";
+import { QuotesIterator } from "../quotes/QuotesIterator";
+import { AddQuote } from "../quotes/AddQuote";
+import { TasksIterator } from "../tasks/TasksIterator";
+import { AddTask } from "../tasks/AddTask";
 import { findDealLabel } from "./deal";
 
 export const DealShow = ({ open, id }: { open: boolean; id?: string }) => {
   const redirect = useRedirect();
   const handleClose = () => {
-    redirect("list", "deals");
+    redirect("list", "lead-journey");
   };
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="lg:max-w-4xl p-4 overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
         {id ? (
-          <ShowBase id={id}>
+          <ShowBase id={id} resource="lead-journey">
             <DealShowContent />
           </ShowBase>
-        ) : null}
+        ) : (
+          <>
+            <DialogTitle className="sr-only">Deal Details</DialogTitle>
+            <DialogDescription className="sr-only">View deal information</DialogDescription>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
 };
 
 const DealShowContent = () => {
-  const { dealStages } = useConfigurationContext();
+  const { leadStages } = useConfigurationContext();
   const record = useRecordContext<Deal>();
   if (!record) return null;
 
+  // Fetch Contact data using lead_id
+  const { data: contact } = useGetOne<Contact>(
+    "contacts",
+    { id: record.lead_id },
+    { enabled: !!record.lead_id }
+  );
+
+  // Fetch services from database to match with services_interested IDs
+  const { data: servicesData } = useGetList("services", {
+    pagination: { page: 1, perPage: 100 },
+    sort: { field: "name", order: "ASC" },
+  });
+
+  // Fetch notes, quotes, and tasks for notification badges
+  const { data: dealNotes } = useGetList<DealNote>("dealNotes", {
+    pagination: { page: 1, perPage: 1000 },
+    filter: { deal_id: record.id },
+  }, { enabled: !!record.id });
+
+  const { data: contactNotes } = useGetList<ContactNote>("contactNotes", {
+    pagination: { page: 1, perPage: 1000 },
+    filter: record.lead_id ? { contact_id: record.lead_id } : {},
+  }, { enabled: !!record.lead_id });
+
+  const { data: quotes } = useGetList("quotes", {
+    pagination: { page: 1, perPage: 1000 },
+    filter: record.lead_id ? { contact_id: record.lead_id } : {},
+  }, { enabled: !!record.lead_id });
+
+  const { data: tasks } = useGetList("tasks", {
+    pagination: { page: 1, perPage: 1000 },
+    filter: record.lead_id ? { contact_id: record.lead_id } : {},
+  }, { enabled: !!record.lead_id });
+
+  // Calculate notification counts for last 24 hours
+  const twentyFourHoursAgo = subHours(new Date(), 24);
+  
+  const newNotesCount = [
+    ...(dealNotes || []).filter(note => new Date(note.date) > twentyFourHoursAgo),
+    ...(contactNotes || []).filter(note => new Date(note.date) > twentyFourHoursAgo),
+  ].length;
+  
+  const newQuotesCount = (quotes || []).filter(quote => {
+    const createdAt = quote.created_at || quote.date;
+    return createdAt && new Date(createdAt) > twentyFourHoursAgo;
+  }).length;
+  
+  const newTasksCount = (tasks || []).filter(task => {
+    // Show tasks that are due within the next 24 hours or overdue
+    if (!task.due_date) return false;
+    const dueDate = new Date(task.due_date);
+    const now = new Date();
+    return dueDate <= now || (dueDate > now && dueDate <= new Date(now.getTime() + 24 * 60 * 60 * 1000));
+  }).length;
+
+  const displayName = contact 
+    ? `${contact.first_name || ""} ${contact.last_name || ""}`.trim() || record.name
+    : record.name;
+
   return (
     <>
+      <DialogTitle className="sr-only">{displayName}</DialogTitle>
+      <DialogDescription className="sr-only">Deal details and information</DialogDescription>
       <div className="space-y-2">
         {record.archived_at ? <ArchivedTitle /> : null}
         <div className="flex-1">
           <div className="flex justify-between items-start mb-8">
             <div className="flex items-center gap-4">
-              <ReferenceField
-                source="company_id"
-                reference="companies"
-                link="show"
-              >
-                <CompanyAvatar />
-              </ReferenceField>
-              <h2 className="text-2xl font-semibold">{record.name}</h2>
+              <h2 className="text-2xl font-semibold">{displayName}</h2>
+              <span className="text-sm font-medium text-muted-foreground">
+                {record.stage === "converted" ? "Client" : findDealLabel(leadStages, record.stage)}
+              </span>
             </div>
             <div className={`flex gap-2 ${record.archived_at ? "" : "pr-12"}`}>
               {record.archived_at ? (
@@ -77,98 +145,221 @@ const DealShowContent = () => {
               ) : (
                 <>
                   <ArchiveButton record={record} />
+                  <AddToClientsButton record={record} />
                   <EditButton />
                 </>
               )}
             </div>
           </div>
 
-          <div className="flex gap-8 m-4">
-            <div className="flex flex-col mr-10">
-              <span className="text-xs text-muted-foreground tracking-wide">
-                Expected closing date
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">
-                  {isValid(new Date(record.expected_closing_date))
-                    ? format(new Date(record.expected_closing_date), "PP")
-                    : "Invalid date"}
-                </span>
-                {new Date(record.expected_closing_date) < new Date() ? (
-                  <Badge variant="destructive">Past</Badge>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="flex flex-col mr-10">
-              <span className="text-xs text-muted-foreground tracking-wide">
-                Budget
-              </span>
-              <span className="text-sm">
-                {record.amount.toLocaleString("en-US", {
-                  notation: "compact",
-                  style: "currency",
-                  currency: "USD",
-                  currencyDisplay: "narrowSymbol",
-                  minimumSignificantDigits: 3,
-                })}
-              </span>
-            </div>
-
-            {record.category && (
-              <div className="flex flex-col mr-10">
-                <span className="text-xs text-muted-foreground tracking-wide">
-                  Category
-                </span>
-                <span className="text-sm">{record.category}</span>
-              </div>
-            )}
-
-            <div className="flex flex-col mr-10">
-              <span className="text-xs text-muted-foreground tracking-wide">
-                Stage
-              </span>
-              <span className="text-sm">
-                {findDealLabel(dealStages, record.stage)}
-              </span>
-            </div>
-          </div>
-
-          {!!record.contact_ids?.length && (
+          {/* Lead Information Section - All in one row */}
+          {contact && (
             <div className="m-4">
-              <div className="flex flex-col min-h-12 mr-10">
-                <span className="text-xs text-muted-foreground tracking-wide">
-                  Contacts
-                </span>
-                <ReferenceArrayField
-                  source="contact_ids"
-                  reference="contacts_summary"
-                >
-                  <ContactList />
-                </ReferenceArrayField>
+              <Separator className="mb-4" />
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Phone Numbers */}
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground tracking-wide flex items-center gap-2 mb-1">
+                    <Phone className="h-4 w-4" />
+                    Phone
+                  </span>
+                  {contact.phone_jsonb && contact.phone_jsonb.length > 0 ? (
+                    <div className="flex flex-col gap-1">
+                      {contact.phone_jsonb.map((phone, index) => (
+                        <span key={index} className="text-sm">
+                          {phone.number}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">—</span>
+                  )}
+                </div>
+
+                {/* Services Interested */}
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground tracking-wide flex items-center gap-2 mb-1">
+                    <Stethoscope className="h-4 w-4" />
+                    Services Interested
+                  </span>
+                  {contact.services_interested && contact.services_interested.length > 0 && servicesData ? (
+                    <div className="flex flex-wrap gap-1">
+                      {contact.services_interested.map((serviceId) => {
+                        const service = servicesData.find((s: any) => s.id === serviceId);
+                        return service ? (
+                          <Badge key={serviceId} variant="secondary" className="text-xs">
+                            {service.name}
+                          </Badge>
+                        ) : null;
+                      })}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">—</span>
+                  )}
+                </div>
+
+                {/* Tags */}
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground tracking-wide mb-1">
+                    Tags
+                  </span>
+                  <RecordContextProvider value={contact}>
+                    <TagsListEdit />
+                  </RecordContextProvider>
+                </div>
+
+                {/* Stage */}
+                <div className="flex flex-col">
+                  <span className="text-xs text-muted-foreground tracking-wide mb-1">
+                    Stage
+                  </span>
+                  <span className="text-sm font-medium">
+                    {record.stage === "converted" ? "Client" : findDealLabel(leadStages, record.stage)}
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
-          {record.description && (
-            <div className="m-4 whitespace-pre-line">
-              <span className="text-xs text-muted-foreground tracking-wide">
-                Description
-              </span>
-              <p className="text-sm leading-6">{record.description}</p>
+          {/* Email and Address Section */}
+          {contact && (
+            <div className="m-4 space-y-4">
+              <Separator />
+              
+              {/* Email Addresses */}
+              {contact.email_jsonb && contact.email_jsonb.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs text-muted-foreground tracking-wide flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email
+                  </span>
+                  <div className="flex flex-col gap-1">
+                    {contact.email_jsonb.map((email, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <a 
+                          href={`mailto:${email.email}`}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {email.email}
+                        </a>
+                        <Badge variant="outline" className="text-xs">
+                          {email.type}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Address */}
+              {(contact.flat_villa_number || contact.building_street || contact.area) && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs text-muted-foreground tracking-wide flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Address
+                  </span>
+                  <div className="text-sm">
+                    {contact.flat_villa_number && <span>{contact.flat_villa_number}, </span>}
+                    {contact.building_street && <span>{contact.building_street}, </span>}
+                    {contact.area && <span>{contact.area}</span>}
+                    {contact.google_maps_link && (
+                      <a
+                        href={contact.google_maps_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 text-primary hover:underline"
+                      >
+                        View on Map
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
+          {/* Tabs for Notes, Quotes, Tasks */}
           <div className="m-4">
             <Separator className="mb-4" />
-            <ReferenceManyField
-              target="deal_id"
-              reference="dealNotes"
-              sort={{ field: "date", order: "DESC" }}
-              empty={<NoteCreate reference={"deals"} />}
-            >
-              <NotesIterator reference="deals" />
-            </ReferenceManyField>
+            <Tabs defaultValue="notes">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="notes" className="relative gap-2">
+                  <span>Notes</span>
+                  {newNotesCount > 0 && (
+                    <span className="h-5 min-w-5 px-1.5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[10px] font-semibold">
+                      {newNotesCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="quotes" className="relative gap-2">
+                  <span>Quotes</span>
+                  {newQuotesCount > 0 && (
+                    <span className="h-5 min-w-5 px-1.5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[10px] font-semibold">
+                      {newQuotesCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="relative gap-2">
+                  <span>Tasks</span>
+                  {newTasksCount > 0 && (
+                    <span className="h-5 min-w-5 px-1.5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-[10px] font-semibold">
+                      {newTasksCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="notes" className="pt-4">
+                <UnifiedNotesIterator
+                  reference="lead-journey"
+                  dealId={record.id}
+                  // Prefer lead_id when present, fallback to the first legacy contact_ids entry
+                  contactId={
+                    record.lead_id ?? (Array.isArray(record.contact_ids) ? record.contact_ids[0] : undefined)
+                  }
+                  leadId={record.lead_id}
+                />
+              </TabsContent>
+              <TabsContent value="quotes" className="pt-4">
+                {record.lead_id && contact ? (
+                  <RecordContextProvider value={contact}>
+                    <ReferenceManyField
+                      target="contact_id"
+                      reference="quotes"
+                      sort={{ field: "created_at", order: "DESC" }}
+                    >
+                      <QuotesIterator />
+                    </ReferenceManyField>
+                  </RecordContextProvider>
+                ) : null}
+                {record.lead_id && contact && (
+                  <div className="mt-4">
+                    <RecordContextProvider value={contact}>
+                      <AddQuote />
+                    </RecordContextProvider>
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="tasks" className="pt-4">
+                {record.lead_id && contact ? (
+                  <RecordContextProvider value={contact}>
+                    <ReferenceManyField
+                      target="contact_id"
+                      reference="tasks"
+                      sort={{ field: "due_date", order: "ASC" }}
+                    >
+                      <TasksIterator showAll />
+                    </ReferenceManyField>
+                  </RecordContextProvider>
+                ) : null}
+                {record.lead_id && contact && (
+                  <div className="mt-4">
+                    <RecordContextProvider value={contact}>
+                      <AddTask />
+                    </RecordContextProvider>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
@@ -189,7 +380,7 @@ const ArchiveButton = ({ record }: { record: Deal }) => {
   const refresh = useRefresh();
   const handleClick = () => {
     update(
-      "deals",
+      "lead-journey",
       {
         id: record.id,
         data: { archived_at: new Date().toISOString() },
@@ -197,7 +388,7 @@ const ArchiveButton = ({ record }: { record: Deal }) => {
       },
       {
         onSuccess: () => {
-          redirect("list", "deals");
+          redirect("list", "lead-journey");
           notify("Deal archived", { type: "info", undoable: false });
           refresh();
         },
@@ -230,7 +421,7 @@ const UnarchiveButton = ({ record }: { record: Deal }) => {
   const { mutate } = useMutation({
     mutationFn: () => dataProvider.unarchiveDeal(record),
     onSuccess: () => {
-      redirect("list", "deals");
+      redirect("list", "lead-journey");
       notify("Deal unarchived", {
         type: "info",
         undoable: false,
@@ -255,6 +446,51 @@ const UnarchiveButton = ({ record }: { record: Deal }) => {
     >
       <ArchiveRestore className="w-4 h-4" />
       Send back to the board
+    </Button>
+  );
+};
+
+const AddToClientsButton = ({ record }: { record: Deal }) => {
+  const [update] = useUpdate();
+  const notify = useNotify();
+  const refresh = useRefresh();
+  const isClient = record.stage === "converted";
+
+  const handleClick = () => {
+    if (isClient) {
+      // Already a client, maybe show a message or navigate to client page
+      notify("This lead is already a client", { type: "info", undoable: false });
+    } else {
+      // Convert to client by updating stage to "converted"
+      update(
+        "lead-journey",
+        {
+          id: record.id,
+          data: { stage: "converted" },
+          previousData: record,
+        },
+        {
+          onSuccess: () => {
+            notify("Lead converted to client", { type: "success", undoable: false });
+            refresh();
+          },
+          onError: () => {
+            notify("Error: lead not converted to client", { type: "error" });
+          },
+        },
+      );
+    }
+  };
+
+  return (
+    <Button
+      onClick={handleClick}
+      size="sm"
+      variant={isClient ? "default" : "outline"}
+      className="flex items-center gap-2 h-9"
+      disabled={isClient}
+    >
+      {isClient ? "Client" : "Add to Clients"}
     </Button>
   );
 };

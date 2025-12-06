@@ -1,24 +1,38 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useGetIdentity, useGetList } from "ra-core";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useGetOne, useRedirect } from "ra-core";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search } from "lucide-react";
 
-import type { Deal } from "../types";
-import { DealCardContent } from "./DealCard";
+import type { Deal, Contact } from "../types";
+import { formatCrmDate } from "../misc/timezone";
+import { useConfigurationContext } from "../root/ConfigurationContext";
+import { findDealLabel } from "./deal";
 
 export const DealArchivedList = () => {
   const { identity } = useGetIdentity();
+  const { leadStages } = useConfigurationContext();
   const {
     data: archivedLists,
     total,
     isPending,
-  } = useGetList("deals", {
+  } = useGetList("lead-journey", {
     pagination: { page: 1, perPage: 1000 },
     sort: { field: "archived_at", order: "DESC" },
     filter: { "archived_at@not.is": null },
   });
   const [openDialog, setOpenDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Fetch all leads for search - must be called before any conditional returns
+  const { data: allLeads } = useGetList("contacts", {
+    pagination: { page: 1, perPage: 10000 },
+    sort: { field: "id", order: "ASC" },
+  }, { enabled: !!archivedLists && archivedLists.length > 0 });
 
   useEffect(() => {
     if (!isPending && total === 0) {
@@ -30,20 +44,48 @@ export const DealArchivedList = () => {
     setOpenDialog(false);
   }, [archivedLists]);
 
-  if (!identity || isPending || !total || !archivedLists) return null;
-
-  // Group archived lists by date
-  const archivedListsByDate: { [date: string]: Deal[] } = archivedLists.reduce(
-    (acc, deal) => {
-      const date = new Date(deal.archived_at).toDateString();
-      if (!acc[date]) {
-        acc[date] = [];
+  // Create a map of lead_id to lead name for quick lookup - must be called before conditional return
+  const leadNameMap = useMemo(() => {
+    if (!allLeads) return new Map();
+    const map = new Map();
+    allLeads.forEach((lead: any) => {
+      const fullName = `${lead.first_name || ""} ${lead.last_name || ""}`.trim();
+      if (fullName) {
+        map.set(lead.id, fullName);
       }
-      acc[date].push(deal);
-      return acc;
-    },
-    {} as { [date: string]: Deal[] },
-  );
+    });
+    return map;
+  }, [allLeads]);
+
+  // Filter deals by search query - must be called before conditional return
+  const filteredDeals = useMemo(() => {
+    if (!archivedLists || !searchQuery.trim()) return archivedLists || [];
+    
+    const query = searchQuery.toLowerCase();
+    return archivedLists.filter((deal: Deal) => {
+      const dealName = deal.name?.toLowerCase() || "";
+      const leadName = deal.lead_id ? leadNameMap.get(deal.lead_id)?.toLowerCase() : "";
+      return dealName.includes(query) || leadName?.includes(query);
+    });
+  }, [archivedLists, searchQuery, leadNameMap]);
+
+  // Group filtered archived lists by date - must be called before conditional return
+  const archivedListsByDate: { [date: string]: Deal[] } = useMemo(() => {
+    if (!filteredDeals || filteredDeals.length === 0) return {};
+    return filteredDeals.reduce(
+      (acc, deal) => {
+        const date = new Date(deal.archived_at).toDateString();
+        if (!acc[date]) {
+          acc[date] = [];
+        }
+        acc[date].push(deal);
+        return acc;
+      },
+      {} as { [date: string]: Deal[] },
+    );
+  }, [filteredDeals]);
+
+  if (!identity || isPending || !total || !archivedLists) return null;
 
   return (
     <div className="w-full flex flex-row items-center justify-center">
@@ -56,20 +98,41 @@ export const DealArchivedList = () => {
       </Button>
       <Dialog open={openDialog} onOpenChange={() => setOpenDialog(false)}>
         <DialogContent className="lg:max-w-4xl overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
-          <DialogTitle>Archived Deals</DialogTitle>
-          <div className="flex flex-col gap-8">
-            {Object.entries(archivedListsByDate).map(([date, deals]) => (
-              <div key={date} className="flex flex-col gap-4">
-                <h4 className="font-bold">{getRelativeTimeString(date)}</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                  {deals.map((deal: Deal) => (
-                    <div key={deal.id}>
-                      <DealCardContent deal={deal} />
-                    </div>
-                  ))}
-                </div>
+          <DialogTitle>Archived Lead Journey</DialogTitle>
+          <DialogDescription>
+            View and search through archived lead journeys
+          </DialogDescription>
+          <div className="flex flex-col gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                type="text"
+                placeholder="Search archived leads..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {Object.keys(archivedListsByDate).length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                No archived leads found
               </div>
-            ))}
+            ) : (
+              <div className="flex flex-col gap-8">
+                {Object.entries(archivedListsByDate).map(([date, deals]) => (
+                  <div key={date} className="flex flex-col gap-4">
+                    <h4 className="font-bold">{getRelativeTimeString(date)}</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+                      {deals.map((deal: Deal) => (
+                        <div key={deal.id}>
+                          <ArchivedDealCard deal={deal} leadStages={leadStages} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -103,3 +166,66 @@ export function getRelativeTimeString(dateString: string): string {
 function ucFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+const ArchivedDealCard = ({ deal, leadStages }: { deal: Deal; leadStages: any[] }) => {
+  const redirect = useRedirect();
+  const stageLabel = deal.stage === "converted" 
+    ? "Client" 
+    : findDealLabel(leadStages, deal.stage) || deal.stage;
+  
+  const archivedDate = deal.archived_at ? formatCrmDate(deal.archived_at) : null;
+  
+  // Fetch the lead (contact) associated with this deal
+  const { data: lead } = useGetOne<Contact>(
+    "contacts",
+    { id: deal.lead_id },
+    { enabled: !!deal.lead_id },
+  );
+
+  const handleClick = () => {
+    redirect(`/lead-journey/${deal.id}/show`, undefined, undefined, undefined, {
+      _scrollToTop: false,
+    });
+  };
+
+  // Get primary phone and email
+  const primaryPhone = lead?.phone_jsonb?.[0]?.number || "";
+  const primaryEmail = lead?.email_jsonb?.[0]?.email || "";
+
+  return (
+    <div
+      className="cursor-pointer"
+      onClick={handleClick}
+    >
+      <Card className="py-4 transition-all duration-200 shadow-sm hover:shadow-md">
+        <CardContent className="px-4 flex">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium mb-1">
+              {lead ? `${lead.first_name} ${lead.last_name || ""}` : deal.name}
+            </p>
+            {primaryPhone && (
+              <p className="text-xs text-muted-foreground truncate">
+                {primaryPhone}
+                {lead?.phone_has_whatsapp && " 📱"}
+              </p>
+            )}
+            {primaryEmail && (
+              <p className="text-xs text-muted-foreground truncate">
+                {primaryEmail}
+              </p>
+            )}
+            {lead?.area && (
+              <p className="text-xs text-muted-foreground truncate">
+                {lead.area}
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-medium">{stageLabel}</span>
+              {archivedDate && <span>{archivedDate}</span>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};

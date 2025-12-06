@@ -20,14 +20,12 @@ import { ReferenceManyField } from "@/components/admin/reference-many-field";
 import { SortButton } from "@/components/admin/sort-button";
 
 import { ActivityLog } from "../activity/ActivityLog";
-import { Avatar } from "../contacts/Avatar";
 import { TagsList } from "../contacts/TagsList";
 import { findDealLabel } from "../deals/deal";
 import { Status } from "../misc/Status";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Company, Contact, Deal } from "../types";
 import { CompanyAside } from "./CompanyAside";
-import { CompanyAvatar } from "./CompanyAvatar";
 
 export const CompanyShow = () => (
   <ShowBase>
@@ -60,8 +58,7 @@ const CompanyShowContent = () => {
         <Card>
           <CardContent>
             <div className="flex mb-3">
-              <CompanyAvatar />
-              <h5 className="text-xl ml-2 flex-1">{record.name}</h5>
+              <h5 className="text-xl flex-1">{record.name}</h5>
             </div>
             <Tabs defaultValue={currentTab} onValueChange={handleTabChange}>
               <TabsList className="grid w-full grid-cols-3">
@@ -114,7 +111,7 @@ const CompanyShowContent = () => {
               <TabsContent value="deals">
                 {record.nb_deals ? (
                   <ReferenceManyField
-                    reference="deals"
+                    reference="lead-journey"
                     target="company_id"
                     sort={{ field: "name", order: "ASC" }}
                   >
@@ -148,9 +145,6 @@ const ContactsIterator = () => {
               state={{ from: location.pathname }}
               className="flex items-center justify-between hover:bg-muted py-2 transition-colors"
             >
-              <div className="mr-4">
-                <Avatar />
-              </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium">
                   {`${contact.first_name} ${contact.last_name}`}
@@ -210,7 +204,7 @@ const DealsIterator = () => {
         {deals.map((deal) => (
           <div key={deal.id} className="p-0 text-sm">
             <RouterLink
-              to={`/deals/${deal.id}/show`}
+              to={`/lead-journey/${deal.id}/show`}
               className="flex items-center justify-between hover:bg-muted py-2 px-4 transition-colors"
             >
               <div className="flex-1 min-w-0">
@@ -220,7 +214,7 @@ const DealsIterator = () => {
                   {deal.amount.toLocaleString("en-US", {
                     notation: "compact",
                     style: "currency",
-                    currency: "USD",
+                    currency: "AED",
                     currencyDisplay: "narrowSymbol",
                     minimumSignificantDigits: 3,
                   })}

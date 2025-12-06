@@ -5,22 +5,29 @@ export type DealsByStage = Record<Deal["stage"], Deal[]>;
 
 export const getDealsByStage = (
   unorderedDeals: Deal[],
-  dealStages: ConfigurationContextValue["dealStages"],
+  stages: ConfigurationContextValue["dealStages"] | ConfigurationContextValue["leadStages"],
 ) => {
-  if (!dealStages) return {};
+  if (!stages || stages.length === 0) return {};
+
+  const initialColumns = stages.reduce(
+    (obj, stage) => ({ ...obj, [stage.value]: [] }),
+    {} as Record<Deal["stage"], Deal[]>,
+  );
+
   const dealsByStage: Record<Deal["stage"], Deal[]> = unorderedDeals.reduce(
     (acc, deal) => {
+      if (!acc[deal.stage]) {
+        acc[deal.stage] = [];
+      }
       acc[deal.stage].push(deal);
       return acc;
     },
-    dealStages.reduce(
-      (obj, stage) => ({ ...obj, [stage.value]: [] }),
-      {} as Record<Deal["stage"], Deal[]>,
-    ),
+    { ...initialColumns },
   );
+
   // order each column by index
-  dealStages.forEach((stage) => {
-    dealsByStage[stage.value] = dealsByStage[stage.value].sort(
+  stages.forEach((stage) => {
+    dealsByStage[stage.value] = (dealsByStage[stage.value] ?? []).sort(
       (recordA: Deal, recordB: Deal) => recordA.index - recordB.index,
     );
   });

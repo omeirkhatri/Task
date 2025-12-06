@@ -1,24 +1,29 @@
-import {
-  endOfToday,
-  endOfTomorrow,
-  endOfWeek,
-  getDay,
-  startOfToday,
-} from "date-fns";
 import { CheckSquare } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 import { AddTask } from "../tasks/AddTask";
 import { TasksListEmpty } from "./TasksListEmpty";
 import { TasksListFilter } from "./TasksListFilter";
+import {
+  crmAddDays,
+  crmDayOfWeek,
+  crmEndOfDay,
+  crmEndOfWeek,
+  crmStartOfDay,
+} from "../misc/timezone";
 
-const today = new Date();
-const todayDayOfWeek = getDay(today);
-const isBeforeFriday = todayDayOfWeek < 5; // Friday is represented by 5
-const startOfTodayDateISO = startOfToday().toISOString();
-const endOfTodayDateISO = endOfToday().toISOString();
-const endOfTomorrowDateISO = endOfTomorrow().toISOString();
-const endOfWeekDateISO = endOfWeek(today, { weekStartsOn: 0 }).toISOString();
+const startOfTodayDate = crmStartOfDay();
+const endOfTodayDate = crmEndOfDay();
+const endOfTomorrowDate = crmEndOfDay(crmAddDays(new Date(), 1));
+const endOfWeekDate = crmEndOfWeek();
+
+const todayDayOfWeek = crmDayOfWeek();
+const isBeforeFriday =
+  todayDayOfWeek !== undefined ? todayDayOfWeek < 5 : new Date().getUTCDay() < 5; // Friday is 5
+const startOfTodayDateISO = (startOfTodayDate ?? new Date()).toISOString();
+const endOfTodayDateISO = (endOfTodayDate ?? new Date()).toISOString();
+const endOfTomorrowDateISO = (endOfTomorrowDate ?? new Date()).toISOString();
+const endOfWeekDateISO = (endOfWeekDate ?? new Date()).toISOString();
 
 const taskFilters = {
   overdue: { "done_date@is": null, "due_date@lt": startOfTodayDateISO },

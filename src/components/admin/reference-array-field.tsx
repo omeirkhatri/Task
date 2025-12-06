@@ -37,7 +37,7 @@ import { SingleFieldList } from "@/components/admin/single-field-list";
  *     <DataTable>
  *         <DataTable.Col source="id" />
  *         <DataTable.Col source="description" />
- *         <DataTable.NumberCol source="price" options={{ style: 'currency', currency: 'USD' }} />
+ *         <DataTable.NumberCol source="price" options={{ style: 'currency', currency: 'AED' }} />
  *         <DataTable.Col><EditButton /></DataTable.Col>
  *     </DataTable>
  * </ReferenceArrayField>

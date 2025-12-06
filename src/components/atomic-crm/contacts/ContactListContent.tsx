@@ -1,16 +1,16 @@
 import { formatRelative } from "date-fns";
-import { RecordContextProvider, useListContext } from "ra-core";
-import { type MouseEvent, useCallback } from "react";
+import { RecordContextProvider, useListContext, useGetList } from "ra-core";
+import { type MouseEvent, useCallback, useMemo } from "react";
 import { Link } from "react-router";
 import { ReferenceField } from "@/components/admin/reference-field";
 import { TextField } from "@/components/admin/text-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { Status } from "../misc/Status";
-import type { Contact } from "../types";
-import { Avatar } from "./Avatar";
+import type { Contact, Deal } from "../types";
 import { TagsList } from "./TagsList";
 
 export const ContactListContent = () => {
@@ -22,6 +22,23 @@ export const ContactListContent = () => {
     selectedIds,
   } = useListContext<Contact>();
   const isSmall = useIsMobile();
+
+  // Fetch all converted deals to identify clients
+  const { data: convertedDeals } = useGetList<Deal>("lead-journey", {
+    pagination: { page: 1, perPage: 10000 },
+    sort: { field: "id", order: "ASC" },
+    filter: { stage: "converted" },
+  }, { enabled: !isPending });
+
+  // Create a Set of client contact IDs for quick lookup
+  const clientContactIds = useMemo(() => {
+    if (!convertedDeals) return new Set<number | string>();
+    return new Set(
+      convertedDeals
+        .map((deal) => deal.lead_id)
+        .filter((id): id is number | string => id !== undefined && id !== null)
+    );
+  }, [convertedDeals]);
 
   // StopPropagation does not work for some reason on Checkbox, this handler is a workaround
   const handleLinkClick = useCallback(function handleLinkClick(
@@ -55,10 +72,14 @@ export const ContactListContent = () => {
               checked={selectedIds.includes(contact.id)}
               onCheckedChange={() => onToggleItem(contact.id)}
             />
-            <Avatar />
             <div className="flex-1 min-w-0">
-              <div className="font-medium">
+              <div className="font-medium flex items-center gap-2">
                 {`${contact.first_name} ${contact.last_name ?? ""}`}
+                {clientContactIds.has(contact.id) && (
+                  <Badge variant="default" className="text-xs">
+                    Client
+                  </Badge>
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 {contact.title}

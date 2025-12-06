@@ -1,6 +1,4 @@
 import { useListContext } from "ra-core";
-import { Fragment } from "react";
-import { Separator } from "@/components/ui/separator";
 
 import { Note } from "./Note";
 import { NoteCreate } from "./NoteCreate";
@@ -9,28 +7,32 @@ export const NotesIterator = ({
   reference,
   showStatus,
 }: {
-  reference: "contacts" | "deals";
+  reference: "contacts" | "lead-journey";
   showStatus?: boolean;
 }) => {
   const { data, error, isPending } = useListContext();
-  if (isPending || error) return null;
   return (
-    <div className="mt-4">
+    <div className="space-y-3">
       <NoteCreate reference={reference} showStatus={showStatus} />
-      {data && (
-        <div className="mt-4 space-y-4">
+      {error ? (
+        <div className="text-sm text-destructive">
+          Unable to load notes. You can still add a new note above.
+        </div>
+      ) : isPending ? (
+        <div className="text-sm text-muted-foreground">Loading notes…</div>
+      ) : data && data.length > 0 ? (
+        <div className="space-y-2">
           {data.map((note, index) => (
-            <Fragment key={index}>
-              <Note
-                note={note}
-                isLast={index === data.length - 1}
-                key={index}
-                showStatus={showStatus}
-              />
-              {index < data.length - 1 && <Separator />}
-            </Fragment>
+            <Note
+              note={note}
+              isLast={index === data.length - 1}
+              key={index}
+              showStatus={showStatus}
+            />
           ))}
         </div>
+      ) : (
+        <div className="text-sm text-muted-foreground">No notes yet.</div>
       )}
     </div>
   );

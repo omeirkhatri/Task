@@ -17,14 +17,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-import { CompanyAvatar } from "../companies/CompanyAvatar";
-import { Avatar } from "../contacts/Avatar";
 import { RelativeDate } from "../misc/RelativeDate";
 import { Status } from "../misc/Status";
 import { SaleName } from "../sales/SaleName";
 import type { ContactNote, DealNote } from "../types";
-import { NoteAttachments } from "./NoteAttachments";
 import { NoteInputs } from "./NoteInputs";
 
 export const Note = ({
@@ -80,108 +78,113 @@ export const Note = ({
   };
 
   return (
-    <div
+    <Card
+      className="hover:shadow-md transition-shadow py-3 gap-2"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <div className="flex items-center space-x-4 w-full">
-        {resource === "contactNote" ? (
-          <Avatar width={20} height={20} />
-        ) : (
-          <ReferenceField source="company_id" reference="companies" link="show">
-            <CompanyAvatar width={20} height={20} />
-          </ReferenceField>
-        )}
-        <div className="inline-flex h-full items-center text-sm text-muted-foreground">
-          <ReferenceField
-            record={note}
-            resource={resource}
-            source="sales_id"
-            reference="sales"
-            link={false}
-          >
-            <WithRecord render={(record) => <SaleName sale={record} />} />
-          </ReferenceField>{" "}
-          added a note{" "}
-          {showStatus && note.status && (
-            <Status className="ml-2" status={note.status} />
-          )}
-        </div>
-        <span className={`${isHover ? "visible" : "invisible"}`}>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleEnterEditMode}
-                  className="p-1 h-auto cursor-pointer"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Edit note</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleDelete}
-                  className="p-1 h-auto cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Delete note</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </span>
-        <div className="flex-1"></div>
-        <span className="text-sm text-muted-foreground">
-          <RelativeDate date={note.date} />
-        </span>
-      </div>
-      {isEditing ? (
-        <Form onSubmit={handleNoteUpdate} record={note} className="mt-1">
-          <NoteInputs showStatus={showStatus} />
-          <div className="flex justify-end mt-2 space-x-4">
-            <Button
-              variant="ghost"
-              onClick={handleCancelEdit}
-              type="button"
-              className="cursor-pointer"
-            >
-              <CircleX className="w-4 h-4" />
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              Update note
-            </Button>
+      <CardHeader className="pb-2 px-4 pt-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-2 flex-1 min-w-0">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium">
+                  <ReferenceField
+                    record={note}
+                    resource={resource}
+                    source="sales_id"
+                    reference="sales"
+                    link={false}
+                  >
+                    <WithRecord render={(record) => <SaleName sale={record} />} />
+                  </ReferenceField>
+                </span>
+                <span className="text-sm text-muted-foreground">added a note</span>
+                {showStatus && note.status && (
+                  <Status className="ml-1" status={note.status} />
+                )}
+              </div>
+            </div>
           </div>
-        </Form>
-      ) : (
-        <div className="pt-2 [&_p:empty]:min-h-[0.75em]">
-          {note.text?.split("\n").map((paragraph: string, index: number) => (
-            <p className="text-sm leading-6 m-0" key={index}>
-              {paragraph}
-            </p>
-          ))}
-
-          {note.attachments && <NoteAttachments note={note} />}
+          <div className={`flex items-center gap-1 ${isHover ? "opacity-100" : "opacity-0"} transition-opacity`}>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleEnterEditMode}
+                    className="h-7 w-7 p-0 cursor-pointer"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Edit note</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDelete}
+                    className="h-7 w-7 p-0 cursor-pointer text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Delete note</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
-      )}
-    </div>
+      </CardHeader>
+      <CardContent className="pt-0 px-4 pb-0">
+        {isEditing ? (
+          <Form onSubmit={handleNoteUpdate} record={note}>
+            <NoteInputs showStatus={showStatus} />
+            <div className="flex justify-end gap-2 mt-3">
+              <Button
+                variant="outline"
+                onClick={handleCancelEdit}
+                type="button"
+                size="sm"
+                className="cursor-pointer"
+              >
+                <CircleX className="w-4 h-4 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPending}
+                size="sm"
+                className="cursor-pointer"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save
+              </Button>
+            </div>
+          </Form>
+        ) : (
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 [&_p:empty]:min-h-[0.75em]">
+              {note.text?.split("\n").map((paragraph: string, index: number) => (
+                <p className="text-sm leading-5 m-0 mb-1.5 last:mb-0" key={index}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
+              <RelativeDate date={note.date} />
+            </span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

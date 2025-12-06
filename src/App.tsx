@@ -25,6 +25,23 @@ import { CRM } from "@/components/atomic-crm/root/CRM";
  *    />
  * );
  */
-const App = () => <CRM />;
+const App = () => (
+  <CRM
+    taskTypes={[
+      "None",
+      "Call",
+      "WhatsApp",
+      "Email",
+      "Follow-up",
+      "Appointment Scheduled",
+      "Service Consultation",
+      "Quote Sent",
+      "Payment Reminder",
+      "Service Delivery",
+      "Follow-up Call",
+      "Thank you",
+    ]}
+  />
+);
 
 export default App;

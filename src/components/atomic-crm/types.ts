@@ -7,6 +7,16 @@ import type {
   CONTACT_NOTE_CREATED,
   DEAL_CREATED,
   DEAL_NOTE_CREATED,
+  QUOTE_CREATED,
+  QUOTE_UPDATED,
+  TASK_CREATED,
+  TASK_COMPLETED,
+  DEAL_STATUS_CHANGED,
+  DEAL_ARCHIVED,
+  DEAL_UNARCHIVED,
+  NOTE_DELETED,
+  QUOTE_DELETED,
+  TASK_DELETED,
 } from "./consts";
 
 export type SignUpData = {
@@ -48,6 +58,11 @@ export type Sale = {
   password?: string;
 } & Pick<RaRecord, "id">;
 
+export type Service = {
+  name: string;
+  created_at: string;
+} & Pick<RaRecord, "id">;
+
 export type Company = {
   name: string;
   logo: RAFile;
@@ -69,6 +84,10 @@ export type Company = {
   context_links?: string[];
   nb_contacts?: number;
   nb_deals?: number;
+  // B2C fields for clients
+  services?: Identifier[];
+  status?: string;
+  nb_tasks?: number;
 } & Pick<RaRecord, "id">;
 
 export type EmailAndType = {
@@ -100,7 +119,20 @@ export type Contact = {
   phone_jsonb: PhoneNumberAndType[];
   nb_tasks?: number;
   company_name?: string;
+  // B2C fields for leads
+  flat_villa_number?: string;
+  building_street?: string;
+  area?: string;
+  google_maps_link?: string;
+  phone_has_whatsapp?: boolean;
+  services_interested?: Identifier[];
 } & Pick<RaRecord, "id">;
+
+// Type alias for clarity - Lead is a Contact in B2C context
+export type Lead = Contact;
+
+// Type alias for clarity - Client is a Company in B2C context
+export type Client = Company;
 
 export type ContactNote = {
   contact_id: Identifier;
@@ -125,7 +157,12 @@ export type Deal = {
   expected_closing_date: string;
   sales_id: Identifier;
   index: number;
+  // B2C field for lead status
+  lead_id?: Identifier;
 } & Pick<RaRecord, "id">;
+
+// Type alias for clarity - LeadStatus is a Deal in B2C context
+export type LeadStatus = Deal;
 
 export type DealNote = {
   deal_id: Identifier;
@@ -149,6 +186,18 @@ export type Task = {
   text: string;
   due_date: string;
   done_date?: string | null;
+  sales_id?: Identifier;
+  created_at?: string;
+} & Pick<RaRecord, "id">;
+
+export type Quote = {
+  contact_id: Identifier;
+  service_id?: Identifier;
+  description?: string;
+  amount: number;
+  status: "Draft" | "Sent" | "Accepted" | "Rejected";
+  created_at: string;
+  updated_at: string;
   sales_id?: Identifier;
 } & Pick<RaRecord, "id">;
 
@@ -190,6 +239,87 @@ export type ActivityDealNoteCreated = {
   date: string;
 };
 
+export type ActivityQuoteCreated = {
+  type: typeof QUOTE_CREATED;
+  sales_id?: Identifier;
+  quote: Quote;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityQuoteUpdated = {
+  type: typeof QUOTE_UPDATED;
+  sales_id?: Identifier;
+  quote: Quote;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityTaskCreated = {
+  type: typeof TASK_CREATED;
+  sales_id?: Identifier;
+  task: Task;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityTaskCompleted = {
+  type: typeof TASK_COMPLETED;
+  sales_id?: Identifier;
+  task: Task;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityDealStatusChanged = {
+  type: typeof DEAL_STATUS_CHANGED;
+  company_id?: Identifier;
+  sales_id?: Identifier;
+  deal: Deal;
+  date: string;
+  old_stage?: string | null;
+  new_stage?: string | null;
+} & Pick<RaRecord, "id">;
+
+export type ActivityDealArchived = {
+  type: typeof DEAL_ARCHIVED;
+  company_id?: Identifier;
+  sales_id?: Identifier;
+  deal: Deal;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityDealUnarchived = {
+  type: typeof DEAL_UNARCHIVED;
+  company_id?: Identifier;
+  sales_id?: Identifier;
+  deal: Deal;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityNoteDeleted = {
+  type: typeof NOTE_DELETED;
+  sales_id?: Identifier;
+  contact_id?: Identifier;
+  deal_id?: Identifier;
+  note_text?: string;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityQuoteDeleted = {
+  type: typeof QUOTE_DELETED;
+  sales_id?: Identifier;
+  contact_id?: Identifier;
+  quote_amount?: number;
+  quote_description?: string;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityTaskDeleted = {
+  type: typeof TASK_DELETED;
+  sales_id?: Identifier;
+  contact_id?: Identifier;
+  task_text?: string;
+  task_type?: string;
+  date: string;
+} & Pick<RaRecord, "id">;
+
 export type Activity = RaRecord &
   (
     | ActivityCompanyCreated
@@ -197,6 +327,16 @@ export type Activity = RaRecord &
     | ActivityContactNoteCreated
     | ActivityDealCreated
     | ActivityDealNoteCreated
+    | ActivityQuoteCreated
+    | ActivityQuoteUpdated
+    | ActivityTaskCreated
+    | ActivityTaskCompleted
+    | ActivityDealStatusChanged
+    | ActivityDealArchived
+    | ActivityDealUnarchived
+    | ActivityNoteDeleted
+    | ActivityQuoteDeleted
+    | ActivityTaskDeleted
   );
 
 export interface RAFile {

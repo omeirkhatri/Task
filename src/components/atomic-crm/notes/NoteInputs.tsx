@@ -1,8 +1,6 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { TextInput } from "@/components/admin/text-input";
-import { FileInput } from "@/components/admin/file-input";
-import { FileField } from "@/components/admin/file-field";
 import { SelectInput } from "@/components/admin/select-input";
 import { DateTimeInput } from "@/components/admin/date-time-input";
 import { Button } from "@/components/ui/button";
@@ -18,7 +16,7 @@ export const NoteInputs = ({ showStatus }: { showStatus?: boolean }) => {
   const [displayMore, setDisplayMore] = useState(false);
 
   return (
-    <div className="space-y-2">
+    <Fragment>
       <TextInput
         source="text"
         label={false}
@@ -42,7 +40,7 @@ export const NoteInputs = ({ showStatus }: { showStatus?: boolean }) => {
             Show options
           </Button>
           <span className="text-sm text-muted-foreground">
-            (attach files, or change details)
+            (change details)
           </span>
         </div>
       )}
@@ -75,11 +73,8 @@ export const NoteInputs = ({ showStatus }: { showStatus?: boolean }) => {
             defaultValue={getCurrentDate()}
           />
         </div>
-        <FileInput source="attachments" multiple>
-          <FileField source="src" title="title" target="_blank" />
-        </FileInput>
       </div>
-    </div>
+    </Fragment>
   );
 };
 

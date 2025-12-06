@@ -62,3 +62,29 @@ export const defaultContactGender = [
   { value: "female", label: "She/Her", icon: Venus },
   { value: "nonbinary", label: "They/Them", icon: NonBinary },
 ];
+
+export const defaultServices = [
+  "Doctor on Call",
+  "Teleconsultation",
+  "Physiotherapy",
+  "Nurse on Call",
+  "Blood Test",
+  "IV Therapy",
+  "Nanny",
+  "Elderly Care",
+];
+
+export const defaultLeadStages = [
+  { value: "new", label: "New" },
+  { value: "contacted", label: "Contacted" },
+  { value: "quoted", label: "Quoted" },
+  { value: "qualified", label: "Qualified" },
+  { value: "not-qualified", label: "Not Qualified" },
+  { value: "converted", label: "Converted" },
+];
+
+export const defaultClientStatuses = [
+  "Active",
+  "Inactive",
+  "On Hold",
+];

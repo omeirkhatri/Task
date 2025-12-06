@@ -18,7 +18,7 @@ const threeMonthsAgo = new Date(
 ).toISOString();
 
 const DEFAULT_LOCALE = "en-US";
-const CURRENCY = "USD";
+const CURRENCY = "AED";
 
 export const DealsChart = memo(() => {
   const acceptedLanguages = navigator
@@ -36,7 +36,7 @@ export const DealsChart = memo(() => {
     },
   });
   const months = useMemo(() => {
-    if (!data) return [];
+    if (!data || data.length === 0) return [];
     const dealsByMonth = data.reduce((acc, deal) => {
       const month = startOfMonth(deal.created_at ?? new Date()).toISOString();
       if (!acc[month]) {
@@ -52,20 +52,24 @@ export const DealsChart = memo(() => {
         won: dealsByMonth[month]
           .filter((deal: Deal) => deal.stage === "won")
           .reduce((acc: number, deal: Deal) => {
-            acc += deal.amount;
+            const amount = Number(deal.amount) || 0;
+            acc += amount;
             return acc;
           }, 0),
         pending: dealsByMonth[month]
           .filter((deal: Deal) => !["won", "lost"].includes(deal.stage))
           .reduce((acc: number, deal: Deal) => {
+            const amount = Number(deal.amount) || 0;
             // @ts-expect-error - multiplier type issue
-            acc += deal.amount * multiplier[deal.stage];
+            const multiplierValue = multiplier[deal.stage] || 0;
+            acc += amount * multiplierValue;
             return acc;
           }, 0),
         lost: dealsByMonth[month]
           .filter((deal: Deal) => deal.stage === "lost")
           .reduce((acc: number, deal: Deal) => {
-            acc -= deal.amount;
+            const amount = Number(deal.amount) || 0;
+            acc -= amount;
             return acc;
           }, 0),
       };
@@ -75,14 +79,23 @@ export const DealsChart = memo(() => {
   }, [data]);
 
   if (isPending) return null; // FIXME return skeleton instead
+  if (!months || months.length === 0) return null;
+  
   const range = months.reduce(
     (acc, month) => {
-      acc.min = Math.min(acc.min, month.lost);
-      acc.max = Math.max(acc.max, month.won + month.pending);
+      const lost = Number(month.lost) || 0;
+      const won = Number(month.won) || 0;
+      const pending = Number(month.pending) || 0;
+      acc.min = Math.min(acc.min, lost);
+      acc.max = Math.max(acc.max, won + pending);
       return acc;
     },
     { min: 0, max: 0 },
   );
+  
+  // Ensure range values are valid numbers
+  const minValue = isNaN(range.min) ? 0 : range.min;
+  const maxValue = isNaN(range.max) ? 0 : range.max;
   return (
     <div className="flex flex-col">
       <div className="flex items-center mb-4">
@@ -103,8 +116,8 @@ export const DealsChart = memo(() => {
           padding={0.3}
           valueScale={{
             type: "linear",
-            min: range.min * 1.2,
-            max: range.max * 1.2,
+            min: minValue * 1.2,
+            max: Math.max(maxValue * 1.2, 1),
           }}
           indexScale={{ type: "band", round: true }}
           enableGridX={true}

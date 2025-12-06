@@ -10,7 +10,7 @@ import {
 import { Create } from "@/components/admin/create";
 import { SaveButton } from "@/components/admin/form";
 import { FormToolbar } from "@/components/admin/simple-form";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 import type { Deal } from "../types";
 import { DealInputs } from "./DealInputs";
@@ -21,14 +21,14 @@ export const DealCreate = ({ open }: { open: boolean }) => {
   const { data: allDeals } = useListContext<Deal>();
 
   const handleClose = () => {
-    redirect("/deals");
+    redirect("/lead-journey");
   };
 
   const queryClient = useQueryClient();
 
   const onSuccess = async (deal: Deal) => {
     if (!allDeals) {
-      redirect("/deals");
+      redirect("/lead-journey");
       return;
     }
     // increase the index of all deals in the same stage as the new deal
@@ -39,7 +39,7 @@ export const DealCreate = ({ open }: { open: boolean }) => {
     // update the actual deals in the database
     await Promise.all(
       deals.map(async (oldDeal) =>
-        dataProvider.update("deals", {
+        dataProvider.update("lead-journey", {
           id: oldDeal.id,
           data: { index: oldDeal.index + 1 },
           previousData: oldDeal,
@@ -57,7 +57,7 @@ export const DealCreate = ({ open }: { open: boolean }) => {
     );
     const now = Date.now();
     queryClient.setQueriesData<GetListResult | undefined>(
-      { queryKey: ["deals", "getList"] },
+      { queryKey: ["lead-journey", "getList"] },
       (res) => {
         if (!res) return res;
         return {
@@ -67,7 +67,7 @@ export const DealCreate = ({ open }: { open: boolean }) => {
       },
       { updatedAt: now },
     );
-    redirect("/deals");
+    redirect("/lead-journey");
   };
 
   const { identity } = useGetIdentity();
@@ -75,7 +75,9 @@ export const DealCreate = ({ open }: { open: boolean }) => {
   return (
     <Dialog open={open} onOpenChange={() => handleClose()}>
       <DialogContent className="lg:max-w-4xl overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
-        <Create resource="deals" mutationOptions={{ onSuccess }}>
+        <DialogTitle className="sr-only">Create New Deal</DialogTitle>
+        <DialogDescription className="sr-only">Create a new deal in the lead journey</DialogDescription>
+        <Create resource="lead-journey" mutationOptions={{ onSuccess }}>
           <Form
             defaultValues={{
               sales_id: identity?.id,

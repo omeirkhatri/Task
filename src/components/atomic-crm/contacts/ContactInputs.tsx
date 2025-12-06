@@ -14,7 +14,6 @@ import { SimpleFormIterator } from "@/components/admin/simple-form-iterator";
 import { isLinkedinUrl } from "../misc/isLinkedInUrl";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Sale } from "../types";
-import { Avatar } from "./Avatar";
 import { AutocompleteCompanyInput } from "../companies/AutocompleteCompanyInput.tsx";
 
 export const ContactInputs = () => {
@@ -22,7 +21,6 @@ export const ContactInputs = () => {
 
   return (
     <div className="flex flex-col gap-2 p-1">
-      <Avatar />
       <div className={`flex gap-6 ${isMobile ? "flex-col" : "flex-row"}`}>
         <div className="flex flex-col gap-10 flex-1">
           <ContactIdentityInputs />

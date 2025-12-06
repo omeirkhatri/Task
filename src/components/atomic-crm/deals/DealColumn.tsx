@@ -12,23 +12,17 @@ export const DealColumn = ({
   stage: string;
   deals: Deal[];
 }) => {
-  const totalAmount = deals.reduce((sum, deal) => sum + deal.amount, 0);
+  const leadCount = deals.length;
 
-  const { dealStages } = useConfigurationContext();
+  const { leadStages } = useConfigurationContext();
   return (
     <div className="flex-1 pb-8">
       <div className="flex flex-col items-center">
         <h3 className="text-base font-medium">
-          {findDealLabel(dealStages, stage)}
+          {findDealLabel(leadStages, stage)}
         </h3>
         <p className="text-sm text-muted-foreground">
-          {totalAmount.toLocaleString("en-US", {
-            notation: "compact",
-            style: "currency",
-            currency: "USD",
-            currencyDisplay: "narrowSymbol",
-            minimumSignificantDigits: 3,
-          })}
+          {leadCount} {leadCount === 1 ? "lead" : "leads"}
         </p>
       </div>
       <Droppable droppableId={stage}>

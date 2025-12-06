@@ -10,19 +10,21 @@ import { ActivityLogIterator } from "./ActivityLogIterator";
 
 type ActivityLogProps = {
   companyId?: Identifier;
+  contactId?: Identifier;
   pageSize?: number;
   context?: "company" | "contact" | "deal" | "all";
 };
 
 export function ActivityLog({
   companyId,
+  contactId,
   pageSize = 20,
   context = "all",
 }: ActivityLogProps) {
   const dataProvider = useDataProvider<CrmDataProvider>();
   const { data, isPending, error } = useQuery({
-    queryKey: ["activityLog", companyId],
-    queryFn: () => dataProvider.getActivityLog(companyId),
+    queryKey: ["activityLog", companyId, contactId],
+    queryFn: () => dataProvider.getActivityLog(companyId, contactId),
   });
 
   if (isPending) {

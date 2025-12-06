@@ -13,13 +13,14 @@ import {
 import { useFormContext } from "react-hook-form";
 import { SaveButton } from "@/components/admin/form";
 import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 
 import { NoteInputs } from "./NoteInputs";
-import { getCurrentDate } from "./utils";
+import { formatNoteDate, getCurrentDate } from "./utils";
 
 const foreignKeyMapping = {
   contacts: "contact_id",
-  deals: "deal_id",
+  "lead-journey": "deal_id",
 };
 
 export const NoteCreate = ({
@@ -27,7 +28,7 @@ export const NoteCreate = ({
   showStatus,
   className,
 }: {
-  reference: "contacts" | "deals";
+  reference: "contacts" | "lead-journey";
   showStatus?: boolean;
   className?: string;
 }) => {
@@ -35,17 +36,21 @@ export const NoteCreate = ({
   const record = useRecordContext();
   const { identity } = useGetIdentity();
 
-  if (!record || !identity) return null;
+  if (!record) return null;
 
   return (
-    <CreateBase resource={resource} redirect={false}>
-      <Form>
-        <div className={cn("space-y-3", className)}>
-          <NoteInputs showStatus={showStatus} />
-          <NoteCreateButton reference={reference} record={record} />
-        </div>
-      </Form>
-    </CreateBase>
+    <Card className="bg-muted/30 py-3">
+      <CardContent className="pt-0 px-4 pb-0">
+        <CreateBase resource={resource} redirect={false}>
+          <Form>
+            <div className={className}>
+              <NoteInputs showStatus={showStatus} />
+              <NoteCreateButton reference={reference} record={record} />
+            </div>
+          </Form>
+        </CreateBase>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -53,7 +58,7 @@ const NoteCreateButton = ({
   reference,
   record,
 }: {
-  reference: "contacts" | "deals";
+  reference: "contacts" | "lead-journey";
   record: RaRecord<Identifier>;
 }) => {
   const [update] = useUpdate();
@@ -62,7 +67,7 @@ const NoteCreateButton = ({
   const { reset } = useFormContext();
   const { refetch } = useListContext();
 
-  if (!record || !identity) return null;
+  if (!record) return null;
 
   const resetValues: {
     date: string;
@@ -98,8 +103,8 @@ const NoteCreateButton = ({
         transform={(data) => ({
           ...data,
           [foreignKeyMapping[reference]]: record.id,
-          sales_id: identity.id,
-          date: data.date || getCurrentDate(),
+          sales_id: identity?.id,
+          date: formatNoteDate(data.date || getCurrentDate()),
         })}
         mutationOptions={{
           onSuccess: handleSuccess,

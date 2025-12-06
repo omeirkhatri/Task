@@ -2,7 +2,26 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// Props that should not be passed to the DOM input element
+const NON_DOM_PROPS = [
+  "helperText",
+  "alwaysOn",
+  "source",
+  "label",
+  "validate",
+  "format",
+  "parse",
+  "fullWidth",
+  "margin",
+  "variant",
+] as const;
+
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  // Filter out non-DOM props
+  const domProps = Object.fromEntries(
+    Object.entries(props).filter(([key]) => !NON_DOM_PROPS.includes(key as any))
+  ) as React.ComponentProps<"input">;
+
   return (
     <input
       type={type}
@@ -13,7 +32,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
         "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
         className
       )}
-      {...props}
+      {...domProps}
     />
   )
 }

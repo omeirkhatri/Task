@@ -136,8 +136,8 @@ const dataProviderWithCustomMethod: CrmDataProvider = {
     );
   },
   // We simulate a remote endpoint that is in charge of returning activity log
-  getActivityLog: async (companyId?: Identifier) => {
-    return getActivityLog(dataProvider, companyId);
+  getActivityLog: async (companyId?: Identifier, contactId?: Identifier) => {
+    return getActivityLog(dataProvider, companyId, undefined, contactId);
   },
   signUp: async ({
     email,

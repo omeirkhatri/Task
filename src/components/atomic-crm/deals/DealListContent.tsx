@@ -10,17 +10,17 @@ import type { DealsByStage } from "./stages";
 import { getDealsByStage } from "./stages";
 
 export const DealListContent = () => {
-  const { dealStages } = useConfigurationContext();
+  const { leadStages } = useConfigurationContext();
   const { data: unorderedDeals, isPending, refetch } = useListContext<Deal>();
   const dataProvider = useDataProvider();
 
   const [dealsByStage, setDealsByStage] = useState<DealsByStage>(
-    getDealsByStage([], dealStages),
+    getDealsByStage([], leadStages),
   );
 
   useEffect(() => {
     if (unorderedDeals) {
-      const newDealsByStage = getDealsByStage(unorderedDeals, dealStages);
+      const newDealsByStage = getDealsByStage(unorderedDeals, leadStages);
       if (!isEqual(newDealsByStage, dealsByStage)) {
         setDealsByStage(newDealsByStage);
       }
@@ -72,14 +72,16 @@ export const DealListContent = () => {
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex gap-4">
-        {dealStages.map((stage) => (
-          <DealColumn
-            stage={stage.value}
-            deals={dealsByStage[stage.value]}
-            key={stage.value}
-          />
-        ))}
+      <div className="border-t border-border mt-4 pt-4">
+        <div className="flex gap-4">
+          {leadStages.map((stage) => (
+            <DealColumn
+              stage={stage.value}
+              deals={dealsByStage[stage.value]}
+              key={stage.value}
+            />
+          ))}
+        </div>
       </div>
     </DragDropContext>
   );
@@ -132,7 +134,7 @@ const updateDealStage = async (
   if (source.stage === destination.stage) {
     // moving deal inside the same column
     // Fetch all the deals in this stage (because the list may be filtered, but we need to update even non-filtered deals)
-    const { data: columnDeals } = await dataProvider.getList("deals", {
+    const { data: columnDeals } = await dataProvider.getList("lead-journey", {
       sort: { field: "index", order: "ASC" },
       pagination: { page: 1, perPage: 100 },
       filter: { stage: source.stage },
@@ -152,14 +154,14 @@ const updateDealStage = async (
               deal.index >= destinationIndex && deal.index < source.index,
           )
           .map((deal) =>
-            dataProvider.update("deals", {
+            dataProvider.update("lead-journey", {
               id: deal.id,
               data: { index: deal.index + 1 },
               previousData: deal,
             }),
           ),
         // for the deal that was moved, update its index
-        dataProvider.update("deals", {
+        dataProvider.update("lead-journey", {
           id: source.id,
           data: { index: destinationIndex },
           previousData: source,
@@ -178,14 +180,14 @@ const updateDealStage = async (
               deal.index <= destinationIndex && deal.index > source.index,
           )
           .map((deal) =>
-            dataProvider.update("deals", {
+            dataProvider.update("lead-journey", {
               id: deal.id,
               data: { index: deal.index - 1 },
               previousData: deal,
             }),
           ),
         // for the deal that was moved, update its index
-        dataProvider.update("deals", {
+        dataProvider.update("lead-journey", {
           id: source.id,
           data: { index: destinationIndex },
           previousData: source,
@@ -197,12 +199,12 @@ const updateDealStage = async (
     // Fetch all the deals in both stages (because the list may be filtered, but we need to update even non-filtered deals)
     const [{ data: sourceDeals }, { data: destinationDeals }] =
       await Promise.all([
-        dataProvider.getList("deals", {
+        dataProvider.getList("lead-journey", {
           sort: { field: "index", order: "ASC" },
           pagination: { page: 1, perPage: 100 },
           filter: { stage: source.stage },
         }),
-        dataProvider.getList("deals", {
+        dataProvider.getList("lead-journey", {
           sort: { field: "index", order: "ASC" },
           pagination: { page: 1, perPage: 100 },
           filter: { stage: destination.stage },
@@ -215,7 +217,7 @@ const updateDealStage = async (
       ...sourceDeals
         .filter((deal) => deal.index > source.index)
         .map((deal) =>
-          dataProvider.update("deals", {
+          dataProvider.update("lead-journey", {
             id: deal.id,
             data: { index: deal.index - 1 },
             previousData: deal,
@@ -225,14 +227,14 @@ const updateDealStage = async (
       ...destinationDeals
         .filter((deal) => deal.index >= destinationIndex)
         .map((deal) =>
-          dataProvider.update("deals", {
+          dataProvider.update("lead-journey", {
             id: deal.id,
             data: { index: deal.index + 1 },
             previousData: deal,
           }),
         ),
       // change the dragged deal to take the destination index and column
-      dataProvider.update("deals", {
+      dataProvider.update("lead-journey", {
         id: source.id,
         data: {
           index: destinationIndex,

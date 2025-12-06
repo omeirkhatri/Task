@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/tooltip";
 
 import { SimpleList } from "../simple-list/SimpleList";
-import { Avatar } from "../contacts/Avatar";
 import type { Contact } from "../types";
 
 export const HotContacts = () => {
@@ -73,7 +72,6 @@ export const HotContacts = () => {
               {contact.title} at {contact.company_name}
             </>
           )}
-          leftAvatar={(contact) => <Avatar record={contact} />}
           empty={
             <div className="p-4">
               <p className="text-sm mb-4">

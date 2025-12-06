@@ -12,6 +12,9 @@ import {
   defaultNoteStatuses,
   defaultTaskTypes,
   defaultTitle,
+  defaultServices,
+  defaultLeadStages,
+  defaultClientStatuses,
 } from "./defaultConfiguration";
 
 // Define types for the context value
@@ -20,12 +23,15 @@ export interface ConfigurationContextValue {
   dealCategories: string[];
   dealPipelineStatuses: string[];
   dealStages: DealStage[];
+  leadStages: DealStage[];
   noteStatuses: NoteStatus[];
   taskTypes: string[];
   title: string;
   darkModeLogo: string;
   lightModeLogo: string;
   contactGender: ContactGender[];
+  services: string[];
+  clientStatuses: string[];
 }
 
 export interface ConfigurationProviderProps extends ConfigurationContextValue {
@@ -38,12 +44,15 @@ export const ConfigurationContext = createContext<ConfigurationContextValue>({
   dealCategories: defaultDealCategories,
   dealPipelineStatuses: defaultDealPipelineStatuses,
   dealStages: defaultDealStages,
+  leadStages: defaultLeadStages,
   noteStatuses: defaultNoteStatuses,
   taskTypes: defaultTaskTypes,
   title: defaultTitle,
   darkModeLogo: defaultDarkModeLogo,
   lightModeLogo: defaultLightModeLogo,
   contactGender: defaultContactGender,
+  services: defaultServices,
+  clientStatuses: defaultClientStatuses,
 });
 
 export const ConfigurationProvider = ({
@@ -52,12 +61,15 @@ export const ConfigurationProvider = ({
   dealCategories,
   dealPipelineStatuses,
   dealStages,
+  leadStages,
   darkModeLogo,
   lightModeLogo,
   noteStatuses,
   taskTypes,
   title,
   contactGender,
+  services,
+  clientStatuses,
 }: ConfigurationProviderProps) => (
   <ConfigurationContext.Provider
     value={{
@@ -65,12 +77,15 @@ export const ConfigurationProvider = ({
       dealCategories,
       dealPipelineStatuses,
       dealStages,
+      leadStages,
       darkModeLogo,
       lightModeLogo,
       noteStatuses,
       title,
       taskTypes,
       contactGender,
+      services,
+      clientStatuses,
     }}
   >
     {children}

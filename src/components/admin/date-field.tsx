@@ -1,6 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { useFieldValue, useTranslate } from "ra-core";
 
+import { CRM_TIME_ZONE } from "@/components/atomic-crm/misc/timezone";
 import { genericMemo } from "@/lib/genericMemo";
 import type { FieldProps } from "@/lib/field.type";
 
@@ -70,26 +71,20 @@ const DateFieldImpl = <
   const date = transform(value);
 
   let dateString = "";
+  const enforcedOptions = { ...options, timeZone: CRM_TIME_ZONE };
   if (date) {
     if (showTime && showDate) {
       dateString = toLocaleStringSupportsLocales
-        ? date.toLocaleString(locales, options)
+        ? date.toLocaleString(locales, enforcedOptions)
         : date.toLocaleString();
     } else if (showDate) {
-      // If input is a date string (e.g. '2022-02-15') without time and time zone,
-      // force timezone to UTC to fix issue with people in negative time zones
-      // who may see a different date when calling toLocaleDateString().
-      const dateOptions =
-        options ??
-        (typeof value === "string" && value.length <= 10
-          ? { timeZone: "UTC" }
-          : undefined);
+      const dateOptions = { ...enforcedOptions };
       dateString = toLocaleStringSupportsLocales
         ? date.toLocaleDateString(locales, dateOptions)
         : date.toLocaleDateString();
     } else if (showTime) {
       dateString = toLocaleStringSupportsLocales
-        ? date.toLocaleTimeString(locales, options)
+        ? date.toLocaleTimeString(locales, enforcedOptions)
         : date.toLocaleTimeString();
     }
   }

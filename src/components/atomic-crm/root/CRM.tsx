@@ -11,8 +11,8 @@ import { Admin } from "@/components/admin/admin";
 import { ForgotPasswordPage } from "@/components/supabase/forgot-password-page";
 import { SetPasswordPage } from "@/components/supabase/set-password-page";
 
-import companies from "../companies";
 import contacts from "../contacts";
+import clients from "../clients";
 import { Dashboard } from "../dashboard/Dashboard";
 import deals from "../deals";
 import { Layout } from "../layout/Layout";
@@ -22,6 +22,7 @@ import {
   dataProvider as defaultDataProvider,
 } from "../providers/supabase";
 import sales from "../sales";
+import servicesResource from "../services";
 import { SettingsPage } from "../settings/SettingsPage";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
 import { ConfigurationProvider } from "./ConfigurationContext";
@@ -36,6 +37,9 @@ import {
   defaultNoteStatuses,
   defaultTaskTypes,
   defaultTitle,
+  defaultServices,
+  defaultLeadStages,
+  defaultClientStatuses,
 } from "./defaultConfiguration";
 import { i18nProvider } from "./i18nProvider";
 import { StartPage } from "../login/StartPage.tsx";
@@ -92,11 +96,14 @@ export const CRM = ({
   dealCategories = defaultDealCategories,
   dealPipelineStatuses = defaultDealPipelineStatuses,
   dealStages = defaultDealStages,
+  leadStages = defaultLeadStages,
   darkModeLogo = defaultDarkModeLogo,
   lightModeLogo = defaultLightModeLogo,
   noteStatuses = defaultNoteStatuses,
   taskTypes = defaultTaskTypes,
   title = defaultTitle,
+  services = defaultServices,
+  clientStatuses = defaultClientStatuses,
   dataProvider = defaultDataProvider,
   authProvider = defaultAuthProvider,
   disableTelemetry,
@@ -123,11 +130,14 @@ export const CRM = ({
       dealCategories={dealCategories}
       dealPipelineStatuses={dealPipelineStatuses}
       dealStages={dealStages}
+      leadStages={leadStages}
       darkModeLogo={darkModeLogo}
       lightModeLogo={lightModeLogo}
       noteStatuses={noteStatuses}
       taskTypes={taskTypes}
       title={title}
+      services={services}
+      clientStatuses={clientStatuses}
     >
       <Admin
         dataProvider={dataProvider}
@@ -153,13 +163,15 @@ export const CRM = ({
         <CustomRoutes>
           <Route path={SettingsPage.path} element={<SettingsPage />} />
         </CustomRoutes>
-        <Resource name="deals" {...deals} />
-        <Resource name="contacts" {...contacts} />
-        <Resource name="companies" {...companies} />
+        <Resource name="lead-journey" options={{ label: "Lead Journey" }} {...deals} />
+        <Resource name="contacts" options={{ label: "Leads" }} {...contacts} />
+        <Resource name="clients" options={{ label: "Clients" }} {...clients} />
         <Resource name="contactNotes" />
         <Resource name="dealNotes" />
         <Resource name="tasks" />
+        <Resource name="quotes" />
         <Resource name="sales" {...sales} />
+        <Resource name="services" {...servicesResource} />
         <Resource name="tags" />
       </Admin>
     </ConfigurationProvider>

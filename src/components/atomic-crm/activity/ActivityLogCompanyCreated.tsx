@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 
 import { ReferenceField } from "@/components/admin/reference-field";
-import { CompanyAvatar } from "../companies/CompanyAvatar";
 import { RelativeDate } from "../misc/RelativeDate";
 import { SaleName } from "../sales/SaleName";
 import type { ActivityCompanyCreated } from "../types";
@@ -18,32 +17,26 @@ export function ActivityLogCompanyCreated({
   const { company } = activity;
   return (
     <div className="p-0">
-      <div className="flex flex-row space-x-1 items-center w-full">
-        <CompanyAvatar width={20} height={20} record={company} />
-
-        <div className="text-sm text-muted-foreground flex-grow">
-          <span className="text-muted-foreground text-sm inline-flex">
-            <ReferenceField
-              source="sales_id"
-              reference="sales"
-              record={activity}
-            >
-              <SaleName />
-            </ReferenceField>
-          </span>
-          &nbsp;added company &nbsp;
-          <Link to={`/companies/${company.id}/show`}>{company.name}</Link>
-          {context === "all" && (
-            <>
-              <RelativeDate date={activity.date} />
-            </>
-          )}
+      <div className="flex flex-row space-x-1 items-center w-full justify-between">
+        <div className="flex flex-row space-x-1 items-center flex-grow min-w-0">
+          <div className="w-5 h-5 bg-indigo-200 rounded-full flex-shrink-0" />
+          <div className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm inline-flex">
+              <ReferenceField
+                source="sales_id"
+                reference="sales"
+                record={activity}
+              >
+                <SaleName />
+              </ReferenceField>
+            </span>
+            &nbsp;added company &nbsp;
+            <Link to={`/companies/${company.id}/show`}>{company.name}</Link>
+          </div>
         </div>
-        {context === "company" && (
-          <span className="text-muted-foreground text-sm">
-            <RelativeDate date={activity.date} />
-          </span>
-        )}
+        <span className="text-muted-foreground text-xs flex-shrink-0 ml-2">
+          <RelativeDate date={activity.date} />
+        </span>
       </div>
     </div>
   );
