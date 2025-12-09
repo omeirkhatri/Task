@@ -82,9 +82,3 @@ export const defaultLeadStages = [
   { value: "not-qualified", label: "Not Qualified" },
   { value: "converted", label: "Converted" },
 ];
-
-export const defaultClientStatuses = [
-  "Active",
-  "Inactive",
-  "On Hold",
-];

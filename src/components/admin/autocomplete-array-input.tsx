@@ -39,9 +39,10 @@ export const AutocompleteArrayInput = (
       inputText?:
         | React.ReactNode
         | ((option: any | undefined) => React.ReactNode);
+      minItems?: number;
     },
 ) => {
-  const { filterToQuery = DefaultFilterToQuery, inputText } = props;
+  const { filterToQuery = DefaultFilterToQuery, inputText, minItems = 0 } = props;
   const {
     allChoices = [],
     source,
@@ -67,8 +68,13 @@ export const AutocompleteArrayInput = (
   const [open, setOpen] = React.useState(false);
 
   const handleUnselect = useEvent((choice: any) => {
+    const currentValue = field.value || [];
+    // Prevent removing if it would violate minItems constraint
+    if (minItems > 0 && currentValue.length <= minItems) {
+      return;
+    }
     field.onChange(
-      field.value.filter((v: any) => v !== getChoiceValue(choice)),
+      currentValue.filter((v: any) => v !== getChoiceValue(choice)),
     );
   });
 
@@ -77,7 +83,11 @@ export const AutocompleteArrayInput = (
     if (input) {
       if (e.key === "Delete" || e.key === "Backspace") {
         if (input.value === "") {
-          field.onChange(field.value.slice(0, -1));
+          const currentValue = field.value || [];
+          // Prevent removing if it would violate minItems constraint
+          if (minItems === 0 || currentValue.length > minItems) {
+            field.onChange(currentValue.slice(0, -1));
+          }
         }
       }
       // This is not a default behavior of the <input /> field
@@ -128,34 +138,40 @@ export const AutocompleteArrayInput = (
         >
           <div className="group rounded-md bg-transparent dark:bg-input/30 border border-input px-3 py-1.75 text-sm transition-all ring-offset-background focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]">
             <div className="flex flex-wrap gap-1">
-              {selectedChoices.map((choice) => (
-                <Badge key={getChoiceValue(choice)} variant="outline">
-                  {getInputText(choice)}
-                  <button
-                    className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleUnselect(choice);
-                      }
-                    }}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleUnselect(choice);
-                    }}
-                  >
-                    <span className="sr-only">
-                      {translate("ra.action.remove", {
-                        _: "Remove",
-                      })}
-                    </span>
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+              {selectedChoices.map((choice) => {
+                const currentValue = field.value || [];
+                const canRemove = minItems === 0 || currentValue.length > minItems;
+                return (
+                  <Badge key={getChoiceValue(choice)} variant="outline">
+                    {getInputText(choice)}
+                    {canRemove && (
+                      <button
+                        className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleUnselect(choice);
+                          }
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleUnselect(choice);
+                        }}
+                      >
+                        <span className="sr-only">
+                          {translate("ra.action.remove", {
+                            _: "Remove",
+                          })}
+                        </span>
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </Badge>
+                );
+              })}
               {/* Avoid having the "Search" Icon by not using CommandInput */}
               <CommandPrimitive.Input
                 ref={inputRef}

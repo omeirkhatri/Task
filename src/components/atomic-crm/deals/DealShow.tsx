@@ -14,13 +14,14 @@ import {
   useListContext,
 } from "ra-core";
 import { DeleteButton } from "@/components/admin/delete-button";
-import { EditButton } from "@/components/admin/edit-button";
 import { ReferenceManyField } from "@/components/admin/reference-many-field";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Link } from "react-router";
 import { subHours } from "date-fns";
 
 import { NotesIterator } from "../notes/NotesIterator";
@@ -28,6 +29,7 @@ import { UnifiedNotesIterator } from "../notes/UnifiedNotesIterator";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Deal, Contact, DealNote, ContactNote } from "../types";
 import { TagsListEdit } from "../contacts/TagsListEdit";
+import { ServicesListEdit } from "../contacts/ServicesListEdit";
 import { QuotesIterator } from "../quotes/QuotesIterator";
 import { AddQuote } from "../quotes/AddQuote";
 import { TasksIterator } from "../tasks/TasksIterator";
@@ -146,7 +148,11 @@ const DealShowContent = () => {
                 <>
                   <ArchiveButton record={record} />
                   <AddToClientsButton record={record} />
-                  <EditButton />
+                  {contact && (
+                    <Button asChild variant="outline" size="sm" className="h-9">
+                      <Link to={`/contacts/${contact.id}/show`}>See Contact</Link>
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -182,20 +188,9 @@ const DealShowContent = () => {
                     <Stethoscope className="h-4 w-4" />
                     Services Interested
                   </span>
-                  {contact.services_interested && contact.services_interested.length > 0 && servicesData ? (
-                    <div className="flex flex-wrap gap-1">
-                      {contact.services_interested.map((serviceId) => {
-                        const service = servicesData.find((s: any) => s.id === serviceId);
-                        return service ? (
-                          <Badge key={serviceId} variant="secondary" className="text-xs">
-                            {service.name}
-                          </Badge>
-                        ) : null;
-                      })}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">—</span>
-                  )}
+                  <RecordContextProvider value={contact}>
+                    <ServicesListEdit />
+                  </RecordContextProvider>
                 </div>
 
                 {/* Tags */}
@@ -213,9 +208,7 @@ const DealShowContent = () => {
                   <span className="text-xs text-muted-foreground tracking-wide mb-1">
                     Stage
                   </span>
-                  <span className="text-sm font-medium">
-                    {record.stage === "converted" ? "Client" : findDealLabel(leadStages, record.stage)}
-                  </span>
+                  <StageSelect deal={record} leadStages={leadStages} />
                 </div>
               </div>
             </div>
@@ -492,5 +485,50 @@ const AddToClientsButton = ({ record }: { record: Deal }) => {
     >
       {isClient ? "Client" : "Add to Clients"}
     </Button>
+  );
+};
+
+const StageSelect = ({ deal, leadStages }: { deal: Deal; leadStages: any[] }) => {
+  const [update] = useUpdate();
+  const notify = useNotify();
+  const refresh = useRefresh();
+
+  const handleStageChange = (newStage: string) => {
+    if (newStage === deal.stage) return;
+    
+    update(
+      "lead-journey",
+      {
+        id: deal.id,
+        data: { stage: newStage },
+        previousData: deal,
+      },
+      {
+        onSuccess: () => {
+          notify("Deal stage updated", { type: "info" });
+          refresh();
+        },
+        onError: () => {
+          notify("Error updating deal stage", { type: "error" });
+        },
+      },
+    );
+  };
+
+  return (
+    <Select value={deal.stage} onValueChange={handleStageChange}>
+      <SelectTrigger className="h-8 text-sm">
+        <SelectValue>
+          {deal.stage === "converted" ? "Client" : findDealLabel(leadStages, deal.stage)}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {leadStages.map((stage) => (
+          <SelectItem key={stage.value} value={stage.value}>
+            {stage.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 };

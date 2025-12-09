@@ -34,6 +34,11 @@ export const LeadInputs = () => {
   );
 };
 
+const validateServices = (value: unknown) => {
+  if (Array.isArray(value) && value.length > 0) return undefined;
+  return "At least one service is required";
+};
+
 const BasicInformation = () => {
   return (
     <div className="flex flex-col gap-4">
@@ -87,6 +92,15 @@ const BasicInformation = () => {
           />
         </SimpleFormIterator>
       </ArrayInput>
+
+      <TextInput
+        source="description"
+        label="Description"
+        multiline
+        rows={4}
+        helperText={false}
+        placeholder="Add a description about this lead"
+      />
     </div>
   );
 };
@@ -128,6 +142,8 @@ const ServicesSection = () => {
           label="Services Interested In"
           optionText="name"
           helperText={false}
+          validate={validateServices}
+          minItems={1}
         />
       </ReferenceArrayInput>
     </div>

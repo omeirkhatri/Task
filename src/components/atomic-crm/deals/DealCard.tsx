@@ -67,10 +67,6 @@ export const DealCardContent = ({
     );
   }
 
-  // Get primary phone and email
-  const primaryPhone = lead?.phone_jsonb?.[0]?.number || "";
-  const primaryEmail = lead?.email_jsonb?.[0]?.email || "";
-
   return (
     <div
       className="cursor-pointer"
@@ -89,22 +85,11 @@ export const DealCardContent = ({
         <CardContent className="px-4 flex">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium mb-1">
-              {lead ? `${lead.first_name} ${lead.last_name || ""}` : deal.name}
+              {lead ? `${lead.first_name} ${lead.last_name || ""}`.trim() : deal.name}
             </p>
-            {primaryPhone && (
-              <p className="text-xs text-muted-foreground truncate">
-                {primaryPhone}
-                {lead?.phone_has_whatsapp && " 📱"}
-              </p>
-            )}
-            {primaryEmail && (
-              <p className="text-xs text-muted-foreground truncate">
-                {primaryEmail}
-              </p>
-            )}
-            {lead?.area && (
-              <p className="text-xs text-muted-foreground truncate">
-                {lead.area}
+            {lead?.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2">
+                {lead.description}
               </p>
             )}
           </div>

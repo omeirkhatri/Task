@@ -100,10 +100,81 @@ const mapResourceName = (resource: string): string => {
   return resource;
 };
 
+type RangeFilter = {
+  field: string;
+  gte?: string;
+  lte?: string;
+};
+
+function parseInList(value?: string): string[] {
+  if (!value) return [];
+  return value
+    .replace(/[()]/g, "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function mergeIdInFilters(
+  existing: string | Identifier[] | undefined,
+  ids: Iterable<Identifier>,
+): string {
+  const existingIds: Identifier[] = Array.isArray(existing)
+    ? existing
+    : typeof existing === "string"
+      ? (parseInList(existing)
+          .map((item) => Number(item))
+          .filter((id) => !Number.isNaN(id)) as Identifier[])
+      : [];
+  const combined = new Set<Identifier>(existingIds);
+  for (const id of ids) {
+    combined.add(id);
+  }
+  if (combined.size === 0) return "(-1)";
+  return `(${Array.from(combined).join(",")})`;
+}
+
+async function collectIdsForRanges(
+  resource: string,
+  ranges: RangeFilter[],
+  baseFilter: Record<string, unknown>,
+): Promise<Set<Identifier>> {
+  const ids = new Set<Identifier>();
+  for (const range of ranges) {
+    const filterForRange: Record<string, unknown> = { ...baseFilter };
+    if (range.gte) {
+      filterForRange[`${range.field}@gte`] = range.gte;
+    }
+    if (range.lte) {
+      filterForRange[`${range.field}@lte`] = range.lte;
+    }
+
+    const { data } = await baseDataProvider.getList(resource, {
+      pagination: { page: 1, perPage: 10000 },
+      sort: { field: "id", order: "ASC" },
+      filter: filterForRange,
+    });
+
+    data?.forEach((record: any) => {
+      if (record?.id !== undefined && record?.id !== null) {
+        ids.add(record.id as Identifier);
+      }
+    });
+  }
+  return ids;
+}
+
 const dataProviderWithCustomMethods = {
   ...baseDataProvider,
   async getList(resource: string, params: GetListParams) {
     const mappedResource = mapResourceName(resource);
+    const lastSeenRanges =
+      params.filter && Array.isArray((params.filter as any).last_seen_ranges)
+        ? ((params.filter as any).last_seen_ranges as RangeFilter[])
+        : [];
+    if (params.filter && "last_seen_ranges" in params.filter) {
+      delete (params.filter as any).last_seen_ranges;
+    }
     
     // Clean up invalid @or filters that might cause parsing errors
     if (params.filter && params.filter["@or"] && typeof params.filter["@or"] === "object") {
@@ -123,42 +194,67 @@ const dataProviderWithCustomMethods = {
       }
     }
     
-    // Handle lead_stage filter for contacts resource - filter contacts by their deal stage
-    if ((resource === "contacts" || resource === "clients") && params.filter && "lead_stage" in params.filter) {
-      const stage = params.filter.lead_stage;
-      delete params.filter.lead_stage;
-      
-      // Fetch all deals with the specified stage
-      const { data: dealsWithStage } = await baseDataProvider.getList("deals", {
-        pagination: { page: 1, perPage: 10000 },
-        sort: { field: "id", order: "ASC" },
-        filter: { stage: stage },
-      });
-      
-      // Extract unique lead_ids (contact IDs) from deals, falling back to legacy contact_ids array
-      const contactIds = Array.from(
-        new Set(
-          dealsWithStage
-            ?.flatMap((deal: Deal) => {
-              if (deal.lead_id != null) return [deal.lead_id];
-              if (Array.isArray((deal as any).contact_ids)) {
-                return (deal as any).contact_ids.filter(
-                  (id: Identifier | undefined) =>
-                    id !== undefined && id !== null,
-                );
-              }
-              return [];
-            })
-            .filter((id: Identifier | undefined): id is Identifier => id !== undefined && id !== null),
-        ),
-      );
-      
-      // Filter contacts by those IDs
-      if (contactIds.length > 0) {
-        params.filter["id@in"] = `(${contactIds.join(",")})`;
-      } else {
-        // No contacts match, return empty result by using a non-existent ID
-        params.filter["id@in"] = "(-1)";
+    // Handle lead_stage filter for contacts resource - filter contacts by their deal stage (single or multi)
+    if (
+      (resource === "contacts" || resource === "clients") &&
+      params.filter &&
+      ("lead_stage" in params.filter || "lead_stage@in" in params.filter)
+    ) {
+      const stageValues: string[] = [];
+      if ("lead_stage" in params.filter) {
+        stageValues.push(params.filter.lead_stage as string);
+        delete params.filter.lead_stage;
+      }
+      if ("lead_stage@in" in params.filter) {
+        stageValues.push(
+          ...parseInList(params.filter["lead_stage@in"] as string),
+        );
+        delete params.filter["lead_stage@in"];
+      }
+
+      if (stageValues.length > 0) {
+        const dealsFilter =
+          stageValues.length === 1
+            ? { stage: stageValues[0] }
+            : { "stage@in": `(${stageValues.join(",")})` };
+
+        const { data: dealsWithStage } = await baseDataProvider.getList(
+          "deals",
+          {
+            pagination: { page: 1, perPage: 10000 },
+            sort: { field: "id", order: "ASC" },
+            filter: dealsFilter,
+          },
+        );
+
+        const contactIds = Array.from(
+          new Set(
+            dealsWithStage
+              ?.flatMap((deal: Deal) => {
+                if (deal.lead_id != null) return [deal.lead_id];
+                if (Array.isArray((deal as any).contact_ids)) {
+                  return (deal as any).contact_ids.filter(
+                    (id: Identifier | undefined) =>
+                      id !== undefined && id !== null,
+                  );
+                }
+                return [];
+              })
+              .filter(
+                (id: Identifier | undefined): id is Identifier =>
+                  id !== undefined && id !== null,
+              ),
+          ),
+        );
+
+        if (contactIds.length > 0) {
+          params.filter["id@in"] = mergeIdInFilters(
+            params.filter["id@in"],
+            contactIds,
+          );
+        } else {
+          params.filter["id@in"] = "(-1)";
+        }
       }
     }
     
@@ -266,14 +362,80 @@ const dataProviderWithCustomMethods = {
       }
     }
     
-    // Handle services_interested@cs filters for contacts - only when a services filter is actually selected
-    if ((resource === "contacts" || resource === "contacts_summary") && params.filter && Object.keys(params.filter).length > 0) {
+    // Handle services_interested filters for contacts - only when a services filter is explicitly selected by the user
+    // CRITICAL: By default, show ALL leads (with and without services_interested)
+    if ((resource === "contacts" || resource === "contacts_summary") && params.filter) {
+      const isEmptySetString = (val: unknown) =>
+        typeof val !== "string" ||
+        val.trim() === "" ||
+        val.replace(/[{}\s,]/g, "") === "";
+
+      // Remove null/undefined/empty-string filters to avoid accidental filtering
+      Object.entries(params.filter).forEach(([key, value]) => {
+        if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) {
+          delete params.filter![key];
+        }
+      });
+      if (params.filter["@or"] && typeof params.filter["@or"] === "object") {
+        const cleanedOr = Object.fromEntries(
+          Object.entries(params.filter["@or"]).filter(([, value]) => {
+            if (value === null || value === undefined) return false;
+            if (typeof value === "string" && value.trim() === "") return false;
+            return true;
+          }),
+        );
+        if (Object.keys(cleanedOr).length === 0) {
+          delete params.filter["@or"];
+        } else {
+          params.filter["@or"] = cleanedOr;
+        }
+      }
+
+      // Clean up empty/invalid services filters (both @cs and @ov) so they don't accidentally filter out leads
+      const serviceKeys = ["services_interested@cs", "services_interested@ov"];
+      serviceKeys.forEach((key) => {
+        if (key in params.filter && isEmptySetString(params.filter[key])) {
+          delete params.filter[key];
+        }
+      });
+
+      if (params.filter["@or"] && typeof params.filter["@or"] === "object") {
+        const cleanedOr = Object.fromEntries(
+          Object.entries(params.filter["@or"]).filter(([key, value]) => {
+            if (
+              !key.startsWith("services_interested@cs") &&
+              !key.startsWith("services_interested@ov")
+            )
+              return true;
+            return !isEmptySetString(value);
+          }),
+        );
+        if (Object.keys(cleanedOr).length === 0) {
+          delete params.filter["@or"];
+        } else {
+          params.filter["@or"] = cleanedOr;
+        }
+      }
+
       // Check if there's actually a services_interested filter
-      const hasServicesFilter = params.filter["services_interested@cs"] || 
-        (params.filter["@or"] && typeof params.filter["@or"] === "object" && 
-         Object.keys(params.filter["@or"]).some(key => key.startsWith("services_interested@cs")));
+      const hasServicesFilter = !!(
+        (params.filter["services_interested@cs"] &&
+          !isEmptySetString(params.filter["services_interested@cs"])) ||
+        (params.filter["services_interested@ov"] &&
+          !isEmptySetString(params.filter["services_interested@ov"])) ||
+        (params.filter["@or"] &&
+          typeof params.filter["@or"] === "object" &&
+          Object.keys(params.filter["@or"]).some(
+            (key) =>
+              (key.startsWith("services_interested@cs") ||
+                key.startsWith("services_interested@ov")) &&
+              !isEmptySetString((params.filter as any)["@or"][key]),
+          ))
+      );
       
       // Only process services filter logic if there's actually a services filter
+      // If no services filter is present, skip this entire block - this ensures ALL contacts are shown
+      // including those without any services_interested (NULL or empty array)
       if (hasServicesFilter) {
         // Check if there are multiple services_interested@cs filters in @or
         if (params.filter["@or"] && typeof params.filter["@or"] === "object") {
@@ -388,6 +550,7 @@ const dataProviderWithCustomMethods = {
             }
           }
         }
+      }
     }
     
     // Handle services_interested filter for lead-journey (deals) - filter through lead_id relationship
@@ -422,6 +585,30 @@ const dataProviderWithCustomMethods = {
           params.filter["lead_id@in"] = "(-1)";
         }
       }
+    }
+    
+    // Ensure params.filter is always an object (not undefined) for the base provider
+    // Empty filter objects are fine - they won't filter anything
+    if (!params.filter) {
+      params.filter = {};
+    }
+
+    // Apply multi-range last_seen filters (union of matching IDs) after all other filters are in place
+    if (
+      lastSeenRanges.length > 0 &&
+      (mappedResource === "contacts_summary" ||
+        resource === "contacts" ||
+        resource === "clients")
+    ) {
+      const ids = await collectIdsForRanges(
+        mappedResource,
+        lastSeenRanges,
+        params.filter,
+      );
+      params.filter["id@in"] =
+        ids.size > 0
+          ? mergeIdInFilters(params.filter["id@in"], ids)
+          : "(-1)";
     }
     
     return baseDataProvider.getList(mappedResource, params);

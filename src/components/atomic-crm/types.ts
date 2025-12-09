@@ -86,7 +86,6 @@ export type Company = {
   nb_deals?: number;
   // B2C fields for clients
   services?: Identifier[];
-  status?: string;
   nb_tasks?: number;
 } & Pick<RaRecord, "id">;
 
@@ -126,6 +125,7 @@ export type Contact = {
   google_maps_link?: string;
   phone_has_whatsapp?: boolean;
   services_interested?: Identifier[];
+  description?: string;
 } & Pick<RaRecord, "id">;
 
 // Type alias for clarity - Lead is a Contact in B2C context

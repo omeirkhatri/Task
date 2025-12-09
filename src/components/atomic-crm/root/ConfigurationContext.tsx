@@ -14,7 +14,6 @@ import {
   defaultTitle,
   defaultServices,
   defaultLeadStages,
-  defaultClientStatuses,
 } from "./defaultConfiguration";
 
 // Define types for the context value
@@ -31,7 +30,6 @@ export interface ConfigurationContextValue {
   lightModeLogo: string;
   contactGender: ContactGender[];
   services: string[];
-  clientStatuses: string[];
 }
 
 export interface ConfigurationProviderProps extends ConfigurationContextValue {
@@ -52,7 +50,6 @@ export const ConfigurationContext = createContext<ConfigurationContextValue>({
   lightModeLogo: defaultLightModeLogo,
   contactGender: defaultContactGender,
   services: defaultServices,
-  clientStatuses: defaultClientStatuses,
 });
 
 export const ConfigurationProvider = ({
@@ -69,7 +66,6 @@ export const ConfigurationProvider = ({
   title,
   contactGender,
   services,
-  clientStatuses,
 }: ConfigurationProviderProps) => (
   <ConfigurationContext.Provider
     value={{
@@ -85,7 +81,6 @@ export const ConfigurationProvider = ({
       taskTypes,
       contactGender,
       services,
-      clientStatuses,
     }}
   >
     {children}

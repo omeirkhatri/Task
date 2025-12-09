@@ -55,6 +55,11 @@ export const ServicesListEdit = () => {
     if (!record) {
       throw new Error("No contact record found");
     }
+    // Prevent deletion if there's only 1 service remaining
+    const currentServicesCount = (record.services_interested || []).length;
+    if (currentServicesCount <= 1) {
+      return;
+    }
     const services_interested = (record.services_interested || []).filter((serviceId) => serviceId !== id);
     await update("contacts", {
       id: record.id,
@@ -65,6 +70,9 @@ export const ServicesListEdit = () => {
 
   if (isPendingRecordServices || isPendingAllServices) return null;
 
+  const servicesCount = record?.services_interested?.length || 0;
+  const canRemoveService = servicesCount > 1;
+
   return (
     <div className="flex flex-wrap gap-2">
       {services?.map((service) => (
@@ -74,13 +82,15 @@ export const ServicesListEdit = () => {
           className="text-xs font-normal pr-1"
         >
           {service.name}
-          <button
-            onClick={() => handleServiceDelete(service.id)}
-            className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-            aria-label={`Remove ${service.name}`}
-          >
-            <X className="h-3 w-3" />
-          </button>
+          {canRemoveService && (
+            <button
+              onClick={() => handleServiceDelete(service.id)}
+              className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+              aria-label={`Remove ${service.name}`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
         </Badge>
       ))}
 

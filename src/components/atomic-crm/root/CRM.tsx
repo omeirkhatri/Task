@@ -39,7 +39,6 @@ import {
   defaultTitle,
   defaultServices,
   defaultLeadStages,
-  defaultClientStatuses,
 } from "./defaultConfiguration";
 import { i18nProvider } from "./i18nProvider";
 import { StartPage } from "../login/StartPage.tsx";
@@ -103,7 +102,6 @@ export const CRM = ({
   taskTypes = defaultTaskTypes,
   title = defaultTitle,
   services = defaultServices,
-  clientStatuses = defaultClientStatuses,
   dataProvider = defaultDataProvider,
   authProvider = defaultAuthProvider,
   disableTelemetry,
@@ -137,7 +135,6 @@ export const CRM = ({
       taskTypes={taskTypes}
       title={title}
       services={services}
-      clientStatuses={clientStatuses}
     >
       <Admin
         dataProvider={dataProvider}
