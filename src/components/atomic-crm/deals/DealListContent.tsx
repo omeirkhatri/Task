@@ -72,16 +72,19 @@ export const DealListContent = () => {
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      <div className="border-t border-border mt-4 pt-4">
-        <div className="flex gap-4">
-          {leadStages.map((stage) => (
-            <DealColumn
-              stage={stage.value}
-              deals={dealsByStage[stage.value]}
-              key={stage.value}
-            />
-          ))}
-        </div>
+      <div 
+        className="grid gap-4 min-h-0 overflow-hidden h-[calc(100vh-14rem)] mt-4" 
+        style={{
+          gridTemplateColumns: `repeat(${leadStages.length}, minmax(0, 1fr))`
+        }}
+      >
+        {leadStages.map((stage) => (
+          <DealColumn
+            stage={stage.value}
+            deals={dealsByStage[stage.value]}
+            key={stage.value}
+          />
+        ))}
       </div>
     </DragDropContext>
   );
@@ -123,7 +126,7 @@ const updateDealStageLocal = (
   }
 };
 
-const updateDealStage = async (
+export const updateDealStage = async (
   source: Deal,
   destination: {
     stage: string;

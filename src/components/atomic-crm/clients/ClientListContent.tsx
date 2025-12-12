@@ -56,7 +56,7 @@ export const ClientListContent = () => {
             />
             <div className="flex-1 min-w-0">
               <div className="font-medium flex items-center gap-2">
-                {`${client.first_name} ${client.last_name ?? ""}`}
+                {`${client.first_name ?? ""} ${client.last_name ?? ""}`.trim() || "New Lead"}
                 <Badge variant="default" className="text-xs">
                   Client
                 </Badge>

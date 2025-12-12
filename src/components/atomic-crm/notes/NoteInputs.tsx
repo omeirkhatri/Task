@@ -1,30 +1,52 @@
 import { Fragment, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { TextInput } from "@/components/admin/text-input";
 import { SelectInput } from "@/components/admin/select-input";
 import { DateTimeInput } from "@/components/admin/date-time-input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useInput, useResourceContext, FieldTitle } from "ra-core";
+import {
+  FormControl,
+  FormError,
+  FormField,
+  FormLabel,
+} from "@/components/admin/form";
+import { InputHelperText } from "@/components/admin/input-helper-text";
 
 import { Status } from "../misc/Status";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { getCurrentDate } from "./utils";
+import { SmartTextInput } from "../misc/SmartTextInput";
 
 export const NoteInputs = ({ showStatus }: { showStatus?: boolean }) => {
   const { noteStatuses } = useConfigurationContext();
   const { setValue } = useFormContext();
   const [displayMore, setDisplayMore] = useState(false);
+  const resource = useResourceContext();
+  const { id, field } = useInput({ source: "text" });
+
+  const handleUsersTagged = (userIds: number[]) => {
+    // Update the tagged_user_ids field when users are tagged
+    setValue("tagged_user_ids", userIds.length > 0 ? userIds : undefined, { shouldDirty: true });
+  };
 
   return (
     <Fragment>
-      <TextInput
-        source="text"
-        label={false}
-        multiline
-        helperText={false}
-        placeholder="Add a note"
-        rows={6}
-      />
+      <FormField id={id} className="m-0" name={field.name}>
+        <FormControl>
+          <SmartTextInput
+            value={field.value || ""}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            multiline
+            placeholder="Add a note. Try tagging someone with @username"
+            rows={6}
+            onUsersTagged={handleUsersTagged}
+          />
+        </FormControl>
+        <InputHelperText helperText={false} />
+        <FormError />
+      </FormField>
 
       {!displayMore && (
         <div className="flex justify-end items-center gap-2">

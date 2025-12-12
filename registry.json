@@ -33,6 +33,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/tasks/TasksPage.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/tasks/TasksIterator.tsx",
           "type": "registry:component"
         },
@@ -381,6 +385,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/misc/textParsing.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/misc/isLinkedInUrl.ts",
           "type": "registry:component"
         },
@@ -390,6 +398,10 @@
         },
         {
           "path": "src/components/atomic-crm/misc/Status.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/misc/SmartTextInput.tsx",
           "type": "registry:component"
         },
         {
@@ -434,6 +446,14 @@
         },
         {
           "path": "src/components/atomic-crm/layout/FormToolbar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/filters/filterUtils.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/filters/FilterOptionButton.tsx",
           "type": "registry:component"
         },
         {
@@ -533,15 +553,15 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/dashboard/RecentLeads.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/dashboard/LeadStatusChart.tsx",
           "type": "registry:component"
         },
         {
           "path": "src/components/atomic-crm/dashboard/LatestNotes.tsx",
-          "type": "registry:component"
-        },
-        {
-          "path": "src/components/atomic-crm/dashboard/HotContacts.tsx",
           "type": "registry:component"
         },
         {

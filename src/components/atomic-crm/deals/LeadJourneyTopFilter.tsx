@@ -30,6 +30,11 @@ export const LeadJourneyTopFilter = ({
     sort: { field: "name", order: "ASC" },
   });
 
+  const { data: salesData } = useGetList("sales", {
+    pagination: { page: 1, perPage: 50 },
+    sort: { field: "first_name", order: "ASC" },
+  });
+
   const startOfWeek = crmStartOfWeek();
   const startOfMonth = crmStartOfMonth();
   const endOfYesterday = crmEndOfYesterday();
@@ -120,11 +125,15 @@ export const LeadJourneyTopFilter = ({
                   Account Manager
                 </div>
                 <div className="flex flex-col gap-1">
-                  <ToggleFilterButton
-                    className="w-full justify-start"
-                    label="Me"
-                    value={{ sales_id: identity?.id }}
-                  />
+                  {salesData &&
+                    salesData.map((sale) => (
+                      <ToggleFilterButton
+                        key={sale.id}
+                        className="w-full justify-start"
+                        label={`${sale.first_name} ${sale.last_name}`}
+                        value={{ sales_id: sale.id }}
+                      />
+                    ))}
                 </div>
               </div>
             </div>

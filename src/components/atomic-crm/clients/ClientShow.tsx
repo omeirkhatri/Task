@@ -1,12 +1,17 @@
-import { ShowBase, useShowContext, useGetList, RecordContextProvider, useRefresh } from "ra-core";
+import { ShowBase, useShowContext, useGetList, RecordContextProvider, useRefresh, useUpdate, useNotify } from "ra-core";
 import { ReferenceField } from "@/components/admin/reference-field";
 import { TextField } from "@/components/admin/text-field";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useMemo } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Edit, Save, CircleX } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import type { SubmitHandler, FieldValues } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 
 import type { Contact, Task, Quote, Deal } from "../types";
-import { ClientAside } from "./ClientAside";
+import { ContactAside } from "../contacts/ContactAside";
 import { QuoteItem } from "../quotes/QuoteItem";
 import { AddQuote } from "../quotes/AddQuote";
 import { Task as TaskComponent } from "../tasks/Task";
@@ -23,12 +28,25 @@ export const ClientShow = () => (
 const ClientShowContent = () => {
   const { record, isPending } = useShowContext<Contact>();
   const refresh = useRefresh();
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [update, { isPending: isUpdating }] = useUpdate();
+  const notify = useNotify();
 
   // Fetch deals associated with this contact to get deal IDs for notes
+  // Fetch both archived and non-archived deals
   const { data: deals } = useGetList<Deal>("lead-journey", {
     pagination: { page: 1, perPage: 1000 },
     filter: record?.id ? { lead_id: record.id } : {},
+    sort: { field: "archived_at", order: "ASC" }, // Non-archived first
   }, { enabled: !!record?.id });
+  
+  // Separate archived and non-archived deals
+  const sortedDeals = useMemo(() => {
+    if (!deals) return [];
+    const active = deals.filter(d => !d.archived_at);
+    const archived = deals.filter(d => d.archived_at);
+    return [...active, ...archived];
+  }, [deals]);
 
   // Get all deal IDs for fetching notes from all deals
   const dealIds = useMemo(() => {
@@ -75,6 +93,51 @@ const ClientShowContent = () => {
     return [...dueTasks, ...completedTasks];
   }, [tasks]);
 
+  const form = useForm<{ description: string }>({
+    defaultValues: {
+      description: record?.description || "",
+    },
+  });
+
+  // Reset form when record ID changes (different contact)
+  useEffect(() => {
+    if (record) {
+      form.reset({ description: record.description || "" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record?.id]);
+
+  const handleDescriptionUpdate: SubmitHandler<FieldValues> = (values) => {
+    if (!record) return;
+    update(
+      "contacts",
+      { id: record.id, data: { description: values.description || null }, previousData: record },
+      {
+        onSuccess: () => {
+          setIsEditingDescription(false);
+          refresh();
+          notify("Description updated", { type: "info" });
+        },
+        onError: (error: any) => {
+          console.error("Error updating description:", error);
+          notify(
+            error?.message?.includes("description") 
+              ? "Description column not found. Please ensure migrations are applied."
+              : "Failed to update description",
+            { type: "error" }
+          );
+        },
+      },
+    );
+  };
+
+  const handleCancelEdit = () => {
+    if (record) {
+      form.reset({ description: record.description || "" });
+    }
+    setIsEditingDescription(false);
+  };
+
   if (isPending || !record) return null;
 
   return (
@@ -101,15 +164,76 @@ const ClientShowContent = () => {
                     </ReferenceField>
                   )}
                 </div>
+                <div className="mt-4">
+                  {isEditingDescription ? (
+                    <FormProvider {...form}>
+                      <form onSubmit={form.handleSubmit(handleDescriptionUpdate)}>
+                        <div className="flex flex-col gap-2">
+                          <Textarea
+                            {...form.register("description")}
+                            placeholder="Add a description..."
+                            rows={4}
+                            className="text-sm"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={handleCancelEdit}
+                              type="button"
+                              size="sm"
+                              className="cursor-pointer"
+                            >
+                              <CircleX className="w-4 h-4 mr-2" />
+                              Cancel
+                            </Button>
+                            <Button
+                              type="submit"
+                              disabled={isUpdating}
+                              size="sm"
+                              className="cursor-pointer"
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      </form>
+                    </FormProvider>
+                  ) : (
+                    <div className="group relative">
+                      {record.description ? (
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                          {record.description}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">
+                          No description
+                        </p>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          form.reset({ description: record.description || "" });
+                          setIsEditingDescription(true);
+                        }}
+                        className="mt-2 h-7 cursor-pointer"
+                      >
+                        <Edit className="w-3.5 h-3.5 mr-2" />
+                        {record.description ? "Edit description" : "Add description"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             
             <Tabs defaultValue="activity" className="mt-6">
-              <TabsList>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
-                <TabsTrigger value="quotes">Quotes</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks</TabsTrigger>
+              <TabsList className="w-full">
+                <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
+                <TabsTrigger value="notes" className="flex-1">Notes</TabsTrigger>
+                <TabsTrigger value="quotes" className="flex-1">Quotes</TabsTrigger>
+                <TabsTrigger value="tasks" className="flex-1">Tasks</TabsTrigger>
               </TabsList>
               
               <TabsContent value="activity" className="pt-4">
@@ -122,6 +246,7 @@ const ClientShowContent = () => {
                 <RecordContextProvider value={record}>
                   <UnifiedNotesIterator
                     reference="contacts"
+                    showStatus
                     contactId={record.id}
                     leadId={record.id}
                     dealIds={dealIds}
@@ -158,7 +283,7 @@ const ClientShowContent = () => {
           </CardContent>
         </Card>
       </div>
-      <ClientAside />
+      <ContactAside deals={sortedDeals} />
     </div>
   );
 };

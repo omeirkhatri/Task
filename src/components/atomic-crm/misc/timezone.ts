@@ -16,7 +16,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
   hour12: false,
 });
 
-const dateFormatter = new Intl.DateTimeFormat("sv-SE", {
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: CRM_TIME_ZONE,
   year: "numeric",
   month: "2-digit",

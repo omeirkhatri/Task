@@ -24,6 +24,7 @@ import {
 import sales from "../sales";
 import servicesResource from "../services";
 import { SettingsPage } from "../settings/SettingsPage";
+import { TasksPage } from "../tasks/TasksPage";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
 import { ConfigurationProvider } from "./ConfigurationContext";
 import {
@@ -159,6 +160,7 @@ export const CRM = ({
 
         <CustomRoutes>
           <Route path={SettingsPage.path} element={<SettingsPage />} />
+          <Route path={TasksPage.path} element={<TasksPage />} />
         </CustomRoutes>
         <Resource name="lead-journey" options={{ label: "Lead Journey" }} {...deals} />
         <Resource name="contacts" options={{ label: "Leads" }} {...contacts} />

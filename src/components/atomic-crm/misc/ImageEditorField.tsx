@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -150,6 +151,9 @@ const ImageEditorDialog = (props: ImageEditorDialogProps) => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload and resize image</DialogTitle>
+          <DialogDescription className="sr-only">
+            Upload an image file and crop it to the desired size.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2 justify-center">
           <div

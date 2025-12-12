@@ -4,15 +4,19 @@ import { TextInput } from "@/components/admin/text-input";
 import { DateInput } from "@/components/admin/date-input";
 import { SelectInput } from "@/components/admin/select-input";
 import { SaveButton } from "@/components/admin/form";
+import { ReferenceArrayInput } from "@/components/admin/reference-array-input";
+import { AutocompleteArrayInput } from "@/components/admin/autocomplete-array-input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import type { Sale } from "../types";
 
 export const TaskEdit = ({
   open,
@@ -47,6 +51,9 @@ export const TaskEdit = ({
             <Form className="flex flex-col gap-4">
               <DialogHeader>
                 <DialogTitle>Edit task</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Edit task details including description, due date, type, and tagged users.
+                </DialogDescription>
               </DialogHeader>
               <TextInput
                 autoFocus
@@ -72,6 +79,19 @@ export const TaskEdit = ({
                   validate={required()}
                 />
               </div>
+              <ReferenceArrayInput
+                source="tagged_user_ids"
+                reference="sales"
+                filter={{ "disabled@neq": true }}
+                sort={{ field: "last_name", order: "ASC" }}
+              >
+                <AutocompleteArrayInput
+                  label="Tag users"
+                  helperText={false}
+                  optionText={(choice: Sale) => `${choice.first_name} ${choice.last_name}`}
+                  placeholder="Search users to tag..."
+                />
+              </ReferenceArrayInput>
               <DialogFooter className="w-full sm:justify-between gap-4">
                 <DeleteButton
                   mutationOptions={{

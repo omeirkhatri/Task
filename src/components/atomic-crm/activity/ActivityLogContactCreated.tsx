@@ -26,7 +26,7 @@ export function ActivityLogContactCreated({
             </ReferenceField>
             &nbsp;added&nbsp;
             <Link to={`/contacts/${contact.id}/show`}>
-              {contact.first_name}&nbsp;{contact.last_name}
+              {`${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || "New Lead"}
             </Link>
           </span>
         </div>

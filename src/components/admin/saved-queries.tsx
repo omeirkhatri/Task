@@ -67,6 +67,9 @@ export const AddSavedQueryDialog = ({
               _: "Save current query as",
             })}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Save the current filter, sort, and display settings as a named query for quick access.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleFormSubmit} className="space-y-4">
           <div className="space-y-2">

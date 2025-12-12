@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,6 +57,9 @@ export const QuoteEdit = ({
           <Form className="flex flex-col gap-4">
             <DialogHeader>
               <DialogTitle>Edit Quote</DialogTitle>
+              <DialogDescription className="sr-only">
+                Edit quote details including service type, status, description, and amount.
+              </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-4">

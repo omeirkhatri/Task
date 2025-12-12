@@ -4,6 +4,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -66,6 +67,9 @@ export function TagDialog({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {tag ? "Edit tag name and color" : "Create a new tag with name and color"}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">

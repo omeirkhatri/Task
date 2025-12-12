@@ -74,7 +74,7 @@ export const ContactListContent = () => {
             />
             <div className="flex-1 min-w-0">
               <div className="font-medium flex items-center gap-2">
-                {`${contact.first_name} ${contact.last_name ?? ""}`}
+                {`${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || "New Lead"}
                 {clientContactIds.has(contact.id) && (
                   <Badge variant="default" className="text-xs">
                     Client

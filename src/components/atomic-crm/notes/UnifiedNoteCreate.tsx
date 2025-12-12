@@ -119,12 +119,21 @@ const UnifiedNoteCreateButton = ({
       <SaveButton
         type="button"
         label="Add this note"
-        transform={(data) => ({
-          ...data,
-          [foreignKeyMapping[reference]]: recordId || record.id,
-          sales_id: identity?.id,
-          date: formatNoteDate(data.date || getCurrentDate()),
-        })}
+        transform={(data) => {
+          const { tagged_user_ids, ...restData } = data;
+          const result: any = {
+            ...restData,
+            [foreignKeyMapping[reference]]: recordId || record.id,
+            sales_id: identity?.id,
+            date: formatNoteDate(data.date || getCurrentDate()),
+          };
+          // Only include tagged_user_ids if it's a non-empty array
+          // This avoids schema cache issues if the column doesn't exist yet
+          if (Array.isArray(tagged_user_ids) && tagged_user_ids.length > 0) {
+            result.tagged_user_ids = tagged_user_ids;
+          }
+          return result;
+        }}
         mutationOptions={{
           onSuccess: handleSuccess,
         }}

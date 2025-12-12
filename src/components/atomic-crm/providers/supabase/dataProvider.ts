@@ -626,6 +626,18 @@ const dataProviderWithCustomMethods = {
     if (mappedResource === "companies_summary") {
       mappedResource = "companies";
     }
+    
+    // Clean up tagged_user_ids for tasks to avoid schema cache issues
+    if (mappedResource === "tasks" && params.data) {
+      const cleanedData = { ...params.data };
+      // Only include tagged_user_ids if it's a valid non-empty array
+      // Otherwise, completely remove it to avoid Supabase schema cache errors
+      if (!Array.isArray(cleanedData.tagged_user_ids) || cleanedData.tagged_user_ids.length === 0) {
+        delete cleanedData.tagged_user_ids;
+      }
+      return baseDataProvider.create(mappedResource, { ...params, data: cleanedData });
+    }
+    
     return baseDataProvider.create(mappedResource, params);
   },
   async update(resource: string, params: any) {
@@ -1074,34 +1086,51 @@ export const dataProvider = withLifecycleCallbacks(
         return applyFullTextSearch(["name", "type", "description"])(params);
       },
     },
+    {
+      resource: "sales",
+      beforeGetList: async (params) => {
+        return applyFullTextSearch([
+          "first_name",
+          "last_name",
+          "email",
+        ], { useFtsSuffix: false })(params);
+      },
+    },
   ],
 );
 
-const applyFullTextSearch = (columns: string[]) => (params: GetListParams) => {
+const applyFullTextSearch = (
+  columns: string[],
+  options: { useFtsSuffix?: boolean } = { useFtsSuffix: true }
+) => (params: GetListParams) => {
   if (!params.filter?.q) {
     return params;
   }
   const { q, ...filter } = params.filter;
+  const { useFtsSuffix = true } = options;
   return {
     ...params,
     filter: {
       ...filter,
       "@or": columns.reduce((acc, column) => {
-        if (column === "email")
+        if (column === "email") {
+          const emailColumn = useFtsSuffix ? "email_fts" : "email";
           return {
             ...acc,
-            [`email_fts@ilike`]: q,
+            [`${emailColumn}@ilike`]: q,
           };
-        if (column === "phone")
+        }
+        if (column === "phone") {
+          const phoneColumn = useFtsSuffix ? "phone_fts" : "phone";
           return {
             ...acc,
-            [`phone_fts@ilike`]: q,
+            [`${phoneColumn}@ilike`]: q,
           };
-        else
-          return {
-            ...acc,
-            [`${column}@ilike`]: q,
-          };
+        }
+        return {
+          ...acc,
+          [`${column}@ilike`]: q,
+        };
       }, {}),
     },
   };

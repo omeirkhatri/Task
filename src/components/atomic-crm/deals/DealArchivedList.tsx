@@ -2,7 +2,6 @@
 import { useGetIdentity, useGetList } from "ra-core";
 import { useEffect, useState, useMemo } from "react";
 import { useGetOne, useRedirect } from "ra-core";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +12,12 @@ import { formatCrmDate } from "../misc/timezone";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { findDealLabel } from "./deal";
 
-export const DealArchivedList = () => {
+interface DealArchivedListProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export const DealArchivedList = ({ open, onOpenChange }: DealArchivedListProps) => {
   const { identity } = useGetIdentity();
   const { leadStages } = useConfigurationContext();
   const {
@@ -25,7 +29,6 @@ export const DealArchivedList = () => {
     sort: { field: "archived_at", order: "DESC" },
     filter: { "archived_at@not.is": null },
   });
-  const [openDialog, setOpenDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch all leads for search - must be called before any conditional returns
@@ -36,12 +39,12 @@ export const DealArchivedList = () => {
 
   useEffect(() => {
     if (!isPending && total === 0) {
-      setOpenDialog(false);
+      onOpenChange(false);
     }
-  }, [isPending, total]);
+  }, [isPending, total, onOpenChange]);
 
   useEffect(() => {
-    setOpenDialog(false);
+    // We don't want to close the dialog just because the list updates
   }, [archivedLists]);
 
   // Create a map of lead_id to lead name for quick lookup - must be called before conditional return
@@ -89,14 +92,7 @@ export const DealArchivedList = () => {
 
   return (
     <div className="w-full flex flex-row items-center justify-center">
-      <Button
-        variant="ghost"
-        onClick={() => setOpenDialog(true)}
-        className="my-4"
-      >
-        View archived deals
-      </Button>
-      <Dialog open={openDialog} onOpenChange={() => setOpenDialog(false)}>
+      <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="lg:max-w-4xl overflow-y-auto max-h-9/10 top-1/20 translate-y-0">
           <DialogTitle>Archived Lead Journey</DialogTitle>
           <DialogDescription>
@@ -152,9 +148,10 @@ export function getRelativeTimeString(dateString: string): string {
 
   // Check if the date is more than one week old
   if (Math.abs(unitDiff) > 7) {
-    return new Intl.DateTimeFormat(undefined, {
-      day: "numeric",
-      month: "long",
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     }).format(date);
   }
 

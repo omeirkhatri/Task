@@ -127,7 +127,7 @@ export const LeadStatusChart = memo(() => {
               axis: {
                 ticks: {
                   text: {
-                    fill: "hsl(var(--muted-foreground))",
+                    fill: "var(--muted-foreground)",
                     fontSize: 12,
                     fontFamily: "inherit",
                   },
@@ -135,20 +135,20 @@ export const LeadStatusChart = memo(() => {
               },
               grid: {
                 line: {
-                  stroke: "hsl(var(--border))",
+                  stroke: "var(--border)",
                   strokeWidth: 1,
                   strokeDasharray: "4 4",
                 },
               },
               tooltip: {
                 container: {
-                  background: "hsl(var(--popover))",
-                  color: "hsl(var(--popover-foreground))",
+                  background: "var(--popover)",
+                  color: "var(--popover-foreground)",
                   fontSize: 12,
                   borderRadius: "6px",
                   boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                   padding: "8px 12px",
-                  border: "1px solid hsl(var(--border))",
+                  border: "1px solid var(--border)",
                 },
               },
             }}

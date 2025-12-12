@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -90,6 +91,9 @@ export const AddQuote = () => {
             <Form className="flex flex-col gap-4">
               <DialogHeader>
                 <DialogTitle>Create New Quote</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Create a new quote with service type, status, description, and amount.
+                </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">

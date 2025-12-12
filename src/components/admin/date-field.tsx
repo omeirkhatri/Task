@@ -71,20 +71,28 @@ const DateFieldImpl = <
   const date = transform(value);
 
   let dateString = "";
-  const enforcedOptions = { ...options, timeZone: CRM_TIME_ZONE };
+  // Default to DD/MM/YYYY format
+  const defaultDateOptions: Intl.DateTimeFormatOptions = {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: CRM_TIME_ZONE,
+  };
+  const enforcedOptions = { ...defaultDateOptions, ...options, timeZone: CRM_TIME_ZONE };
+  const defaultLocales = locales || "en-GB";
   if (date) {
     if (showTime && showDate) {
       dateString = toLocaleStringSupportsLocales
-        ? date.toLocaleString(locales, enforcedOptions)
+        ? date.toLocaleString(defaultLocales, enforcedOptions)
         : date.toLocaleString();
     } else if (showDate) {
       const dateOptions = { ...enforcedOptions };
       dateString = toLocaleStringSupportsLocales
-        ? date.toLocaleDateString(locales, dateOptions)
+        ? date.toLocaleDateString(defaultLocales, dateOptions)
         : date.toLocaleDateString();
     } else if (showTime) {
       dateString = toLocaleStringSupportsLocales
-        ? date.toLocaleTimeString(locales, enforcedOptions)
+        ? date.toLocaleTimeString(defaultLocales, enforcedOptions)
         : date.toLocaleTimeString();
     }
   }

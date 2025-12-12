@@ -1,11 +1,9 @@
-import { FilterLiveForm, useGetIdentity, useListContext } from "ra-core";
+import { useGetIdentity, useListContext } from "ra-core";
 import { matchPath, useLocation } from "react-router";
 import { useState } from "react";
 import { AutocompleteInput } from "@/components/admin/autocomplete-input";
 import { List } from "@/components/admin/list";
 import { ReferenceInput } from "@/components/admin/reference-input";
-import { FilterButton } from "@/components/admin/filter-form";
-import { SearchInput } from "@/components/admin/search-input";
 import { Button } from "@/components/ui/button";
 
 import { TopToolbar } from "../layout/TopToolbar";
@@ -15,21 +13,28 @@ import { DealEdit } from "./DealEdit";
 import { DealEmpty } from "./DealEmpty";
 import { DealListContent } from "./DealListContent";
 import { DealShow } from "./DealShow";
-import { OnlyMineInput } from "./OnlyMineInput";
 import { ContactCreateDialog } from "./ContactCreateDialog";
+import {
+  LeadJourneySearchAndFilter,
+  LeadJourneyTopFilter,
+} from "./LeadJourneyTopFilter";
 
 const DealList = () => {
   const { identity } = useGetIdentity();
   const [createLeadDialogOpen, setCreateLeadDialogOpen] = useState(false);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   if (!identity) return null;
 
   const dealFilters = [
     <ReferenceInput source="lead_id" reference="contacts">
-      <AutocompleteInput 
-        label={false} 
-        placeholder="Lead" 
-        optionText={(choice: any) => `${choice.first_name} ${choice.last_name || ""}`}
+      <AutocompleteInput
+        label={false}
+        placeholder="Lead"
+        optionText={(choice: any) =>
+          `${choice.first_name} ${choice.last_name || ""}`
+        }
       />
     </ReferenceInput>,
   ];
@@ -41,20 +46,39 @@ const DealList = () => {
       title={false}
       sort={{ field: "index", order: "DESC" }}
       filters={dealFilters}
-      actions={<DealActions onNewLeadClick={() => setCreateLeadDialogOpen(true)} />}
+      actions={
+        <DealActions
+          onNewLeadClick={() => setCreateLeadDialogOpen(true)}
+          isFilterExpanded={isFilterExpanded}
+          onFilterToggle={() => setIsFilterExpanded(!isFilterExpanded)}
+          onArchivedClick={() => setShowArchived(true)}
+        />
+      }
       pagination={null}
     >
-      <DealLayout createLeadDialogOpen={createLeadDialogOpen} setCreateLeadDialogOpen={setCreateLeadDialogOpen} />
+      <DealLayout
+        createLeadDialogOpen={createLeadDialogOpen}
+        setCreateLeadDialogOpen={setCreateLeadDialogOpen}
+        isFilterExpanded={isFilterExpanded}
+        showArchived={showArchived}
+        setShowArchived={setShowArchived}
+      />
     </List>
   );
 };
 
-const DealLayout = ({ 
-  createLeadDialogOpen, 
-  setCreateLeadDialogOpen 
-}: { 
+const DealLayout = ({
+  createLeadDialogOpen,
+  setCreateLeadDialogOpen,
+  isFilterExpanded,
+  showArchived,
+  setShowArchived,
+}: {
   createLeadDialogOpen: boolean;
   setCreateLeadDialogOpen: (open: boolean) => void;
+  isFilterExpanded: boolean;
+  showArchived: boolean;
+  setShowArchived: (open: boolean) => void;
 }) => {
   const location = useLocation();
   const matchCreate = matchPath("/lead-journey/create", location.pathname);
@@ -70,41 +94,47 @@ const DealLayout = ({
       <>
         <DealEmpty>
           <DealShow open={!!matchShow} id={matchShow?.params.id} />
-          <DealArchivedList />
+          <DealArchivedList open={showArchived} onOpenChange={setShowArchived} />
         </DealEmpty>
       </>
     );
 
   return (
     <div className="w-full">
+      <LeadJourneyTopFilter isExpanded={isFilterExpanded} />
       <DealListContent />
-      <DealArchivedList />
+      <DealArchivedList open={showArchived} onOpenChange={setShowArchived} />
       <DealCreate open={!!matchCreate} />
       <DealEdit open={!!matchEdit && !matchCreate} id={matchEdit?.params.id} />
       <DealShow open={!!matchShow} id={matchShow?.params.id} />
-      <ContactCreateDialog 
-        open={createLeadDialogOpen} 
-        onOpenChange={setCreateLeadDialogOpen} 
+      <ContactCreateDialog
+        open={createLeadDialogOpen}
+        onOpenChange={setCreateLeadDialogOpen}
       />
     </div>
   );
 };
 
-const DealActions = ({ onNewLeadClick }: { onNewLeadClick: () => void }) => (
+const DealActions = ({
+  onNewLeadClick,
+  isFilterExpanded,
+  onFilterToggle,
+  onArchivedClick,
+}: {
+  onNewLeadClick: () => void;
+  isFilterExpanded: boolean;
+  onFilterToggle: () => void;
+  onArchivedClick: () => void;
+}) => (
   <TopToolbar className="flex items-center gap-4 w-full">
-    <div className="flex-1 max-w-md">
-      <FilterLiveForm>
-        <SearchInput 
-          source="q" 
-          placeholder="Search name, company..."
-        />
-      </FilterLiveForm>
-    </div>
-    <div className="[&>div]:!mt-0 [&>div]:!pb-0">
-      <OnlyMineInput source="sales_id" alwaysOn />
-    </div>
-    <FilterButton />
-    <div className="ml-auto">
+    <LeadJourneySearchAndFilter
+      isFilterExpanded={isFilterExpanded}
+      onFilterToggle={onFilterToggle}
+    />
+    <div className="ml-auto flex items-center gap-2">
+      <Button variant="outline" onClick={onArchivedClick}>
+        Archived
+      </Button>
       <Button onClick={onNewLeadClick}>New Lead</Button>
     </div>
   </TopToolbar>

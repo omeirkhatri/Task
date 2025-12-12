@@ -1,5 +1,5 @@
 import { Droppable } from "@hello-pangea/dnd";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Deal } from "../types";
 import { findDealLabel } from "./deal";
@@ -13,34 +13,40 @@ export const DealColumn = ({
   deals: Deal[];
 }) => {
   const leadCount = deals.length;
-
   const { leadStages } = useConfigurationContext();
+  
   return (
-    <div className="flex-1 pb-8">
-      <div className="flex flex-col items-center">
-        <h3 className="text-base font-medium">
-          {findDealLabel(leadStages, stage)}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          {leadCount} {leadCount === 1 ? "lead" : "leads"}
-        </p>
-      </div>
-      <Droppable droppableId={stage}>
-        {(droppableProvided, snapshot) => (
-          <div
-            ref={droppableProvided.innerRef}
-            {...droppableProvided.droppableProps}
-            className={`flex flex-col rounded-2xl mt-2 gap-2 ${
-              snapshot.isDraggingOver ? "bg-muted" : ""
-            }`}
-          >
-            {deals.map((deal, index) => (
-              <DealCard key={deal.id} deal={deal} index={index} />
-            ))}
-            {droppableProvided.placeholder}
-          </div>
-        )}
-      </Droppable>
+    <div className="flex flex-col h-full min-w-0">
+      <Card className="flex flex-col h-full border-border/50 shadow-sm bg-card">
+        <CardHeader className="pb-2.5 px-4 pt-3 border-b border-border/50">
+          <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+            <span className="truncate">{findDealLabel(leadStages, stage)}</span>
+            {leadCount > 0 && (
+              <span className="text-xs font-medium text-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
+                {leadCount}
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2 bg-muted/20">
+          <Droppable droppableId={stage}>
+            {(droppableProvided, snapshot) => (
+              <div
+                ref={droppableProvided.innerRef}
+                {...droppableProvided.droppableProps}
+                className={`flex flex-col gap-2 h-full min-h-[150px] ${
+                  snapshot.isDraggingOver ? "bg-muted/50 rounded-lg transition-colors" : ""
+                }`}
+              >
+                {deals.map((deal, index) => (
+                  <DealCard key={deal.id} deal={deal} index={index} />
+                ))}
+                {droppableProvided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-import { isAfter } from "date-fns";
 import { useListContext } from "ra-core";
 import { CheckSquare } from "lucide-react";
 
@@ -8,23 +7,21 @@ export const TasksIterator = ({
   showContact,
   className,
   showAll,
+  showTimestamp = true,
 }: {
   showContact?: boolean;
   className?: string;
   showAll?: boolean;
+  showTimestamp?: boolean;
 }) => {
   const { data, error, isPending } = useListContext();
   if (isPending || error) return null;
 
   // If showAll is true, show all tasks (including completed ones)
-  // Otherwise, keep only tasks that are not done or done less than 5 minutes ago
+  // Otherwise, filter out completed tasks completely
   const tasks = showAll 
     ? data
-    : data.filter(
-        (task) =>
-          !task.done_date ||
-          isAfter(new Date(task.done_date), new Date(Date.now() - 5 * 60 * 1000)),
-      );
+    : data.filter((task) => !task.done_date);
 
   if (!tasks || tasks.length === 0) {
     return (
@@ -39,7 +36,7 @@ export const TasksIterator = ({
   return (
     <div className={`space-y-2 ${className || ""}`}>
       {tasks.map((task) => (
-        <Task task={task} showContact={showContact} key={task.id} />
+        <Task task={task} showContact={showContact} showTimestamp={showTimestamp} key={task.id} />
       ))}
     </div>
   );
