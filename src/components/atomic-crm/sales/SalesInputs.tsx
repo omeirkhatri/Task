@@ -4,7 +4,7 @@ import { TextInput } from "@/components/admin/text-input";
 
 import type { Sale } from "../types";
 
-export function SalesInputs() {
+export function SalesInputs({ showPassword = false }: { showPassword?: boolean }) {
   const { identity } = useGetIdentity();
   const record = useRecordContext<Sale>();
   return (
@@ -16,6 +16,13 @@ export function SalesInputs() {
         validate={[required(), email()]}
         helperText={false}
       />
+      {showPassword && (
+        <TextInput
+          source="password"
+          type="password"
+          helperText="Optional. If blank, the user will receive an email to set their password."
+        />
+      )}
       <BooleanInput
         source="administrator"
         readOnly={record?.id === identity?.id}

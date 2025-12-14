@@ -191,7 +191,7 @@ const SettingsForm = ({
               <p className="text-sm text-muted-foreground">
                 You can start sending emails to your server's inbound email
                 address, e.g. by adding it to the
-                <b> Cc: </b> field. Atomic CRM will process the emails and add
+                <b> Cc: </b> field. BestDOC CRM will process the emails and add
                 notes to the corresponding contacts.
               </p>
               <CopyPaste />

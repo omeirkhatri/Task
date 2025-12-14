@@ -9,6 +9,8 @@ import { ReferenceInput } from "@/components/admin/reference-input";
 import { SelectInput } from "@/components/admin/select-input";
 import { SimpleFormIterator } from "@/components/admin/simple-form-iterator";
 import { TextInput } from "@/components/admin/text-input";
+import { RadioButtonGroupInput } from "@/components/admin/radio-button-group-input";
+import { useConfigurationContext } from "../root/ConfigurationContext";
 import type { Sale } from "../types";
 
 export const LeadInputs = () => {
@@ -40,15 +42,37 @@ const validateServices = (value: unknown) => {
 };
 
 const BasicInformation = () => {
+  const { contactGender } = useConfigurationContext();
+  // Filter to only show male and female options for the toggle
+  const genderOptions = contactGender.filter(g => g.value === "male" || g.value === "female");
+  
   return (
     <div className="flex flex-col gap-4">
       <h6 className="text-lg font-semibold">Basic Information</h6>
 
-      <TextInput
-        source="first_name"
-        label="Full Name"
-        validate={required()}
+      <div className="grid grid-cols-2 gap-4">
+        <TextInput
+          source="first_name"
+          label="First Name"
+          validate={required()}
+          helperText={false}
+        />
+        <TextInput
+          source="last_name"
+          label="Last Name"
+          helperText={false}
+        />
+      </div>
+
+      <RadioButtonGroupInput
+        source="gender"
+        label="Gender"
+        choices={genderOptions}
+        optionText="label"
+        optionValue="value"
         helperText={false}
+        row
+        defaultValue={genderOptions[0]?.value}
       />
 
       <ArrayInput source="phone_jsonb" label="Phone Number" helperText={false}>

@@ -66,9 +66,12 @@ export const DealArchivedList = ({ open, onOpenChange }: DealArchivedListProps) 
     
     const query = searchQuery.toLowerCase();
     return archivedLists.filter((deal: Deal) => {
+      const dealFirstName = deal.first_name?.toLowerCase() || "";
+      const dealLastName = deal.last_name?.toLowerCase() || "";
       const dealName = deal.name?.toLowerCase() || "";
+      const dealFullName = `${dealFirstName} ${dealLastName}`.trim().toLowerCase();
       const leadName = deal.lead_id ? leadNameMap.get(deal.lead_id)?.toLowerCase() : "";
-      return dealName.includes(query) || leadName?.includes(query);
+      return dealFullName.includes(query) || dealName.includes(query) || leadName?.includes(query);
     });
   }, [archivedLists, searchQuery, leadNameMap]);
 
@@ -194,7 +197,11 @@ const ArchivedDealCard = ({ deal, leadStages }: { deal: Deal; leadStages: any[] 
         <CardContent className="px-4 flex">
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium mb-1">
-              {lead ? `${lead.first_name} ${lead.last_name || ""}`.trim() : deal.name}
+              {lead
+                ? `${lead.first_name} ${lead.last_name || ""}`.trim()
+                : deal.first_name || deal.last_name
+                ? `${deal.first_name ?? ""} ${deal.last_name ?? ""}`.trim()
+                : deal.name || "New Lead"}
             </p>
             {lead?.description && (
               <p className="text-xs text-muted-foreground line-clamp-2">

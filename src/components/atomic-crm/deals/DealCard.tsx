@@ -113,7 +113,11 @@ export const DealCardContent = ({
             >
               <CardContent className="px-4 flex">
                 <div>
-                  <p className="text-sm font-medium mb-2">{deal.name}</p>
+                  <p className="text-sm font-medium mb-2">
+                    {deal.first_name || deal.last_name
+                      ? `${deal.first_name ?? ""} ${deal.last_name ?? ""}`.trim()
+                      : deal.name || "New Lead"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -169,7 +173,11 @@ export const DealCardContent = ({
             <CardContent className="px-4 flex">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium mb-1">
-                  {lead ? `${lead.first_name ?? ""} ${lead.last_name ?? ""}`.trim() || "New Lead" : deal.name}
+                  {lead
+                    ? `${lead.first_name ?? ""} ${lead.last_name ?? ""}`.trim() || "New Lead"
+                    : deal.first_name || deal.last_name
+                    ? `${deal.first_name ?? ""} ${deal.last_name ?? ""}`.trim()
+                    : deal.name || "New Lead"}
                 </p>
                 {lead?.description && (
                   <p className="text-xs text-muted-foreground line-clamp-2">

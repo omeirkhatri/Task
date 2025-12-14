@@ -49,23 +49,33 @@ async function inviteUser(req: Request, currentUserSale: any) {
     return createErrorResponse(401, "Not Authorized");
   }
 
+  const passwordProvided =
+    typeof password === "string" && password.trim().length > 0;
+
   const { data, error: userError } = await supabaseAdmin.auth.admin.createUser({
     email,
-    password,
+    ...(passwordProvided ? { password } : {}),
+    // If we set the password directly, confirm the email so the user can sign in immediately.
+    ...(passwordProvided ? { email_confirm: true } : {}),
+    // Keep auth ban status in sync with the sales.disabled flag.
+    ban_duration: disabled ? "87600h" : "none",
     user_metadata: { first_name, last_name },
   });
 
-  const { error: emailError } =
-    await supabaseAdmin.auth.admin.inviteUserByEmail(email);
-
   if (!data?.user || userError) {
-    console.error(`Error inviting user: user_error=${userError}`);
+    console.error(`Error creating user: user_error=${userError}`);
     return createErrorResponse(500, "Internal Server Error");
   }
 
-  if (!data?.user || userError || emailError) {
-    console.error(`Error inviting user, email_error=${emailError}`);
-    return createErrorResponse(500, "Failed to send invitation mail");
+  // Only send an invite email when no password was provided.
+  // If a password is set, admins can share credentials out-of-band.
+  if (!passwordProvided) {
+    const { error: emailError } =
+      await supabaseAdmin.auth.admin.inviteUserByEmail(email);
+    if (emailError) {
+      console.error(`Error inviting user, email_error=${emailError}`);
+      return createErrorResponse(500, "Failed to send invitation mail");
+    }
   }
 
   try {

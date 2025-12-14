@@ -33,8 +33,9 @@ const ClientEditContent = () => {
     : record.first_name || "";
   
   return (
-    <div className="mt-2 flex lg:mr-72">
-      <div className="flex-1">
+    <div className="mt-2 flex justify-center">
+      <div className="w-[90%] max-w-6xl flex gap-8">
+        <div className="flex-1">
         <Form 
           className="flex flex-1 flex-col gap-4"
           defaultValues={{
@@ -49,8 +50,11 @@ const ClientEditContent = () => {
           </CardContent>
         </Card>
       </Form>
+        </div>
+        <ClientAside link="show" />
       </div>
-      <ClientAside link="show" />
     </div>
   );
 };
+
+

@@ -552,10 +552,25 @@ using (true);
 
 -- Use Postgres to create a bucket.
 
-insert into storage.buckets
-  (id, name, public)
-values
-  ('attachments', 'attachments', true);
+do $$
+begin
+  -- Storage schema has changed across versions (some older versions don't have the "public" column).
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'storage'
+      and table_name = 'buckets'
+      and column_name = 'public'
+  ) then
+    insert into storage.buckets (id, name, public)
+    values ('attachments', 'attachments', true)
+    on conflict (id) do nothing;
+  else
+    insert into storage.buckets (id, name)
+    values ('attachments', 'attachments')
+    on conflict (id) do nothing;
+  end if;
+end $$;
 
 CREATE POLICY "Attachments 1mt4rzk_0" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'attachments');
 CREATE POLICY "Attachments 1mt4rzk_1" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'attachments');

@@ -3,6 +3,7 @@ import { FormToolbar } from "@/components/admin/simple-form";
 import { Card, CardContent } from "@/components/ui/card";
 
 import type { Contact } from "../types";
+import { createLeadJourneyDealForContact } from "../deals/createLeadJourneyDeal";
 import { LeadInputs } from "../contacts/LeadInputs";
 
 export const ClientCreate = () => {
@@ -16,20 +17,7 @@ export const ClientCreate = () => {
       return;
     }
     try {
-      const leadJourneyData = {
-        name: `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim() || "New Lead",
-        lead_id: data.id,
-        stage: "new",
-        sales_id: data.sales_id ?? identity?.id,
-        index: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      console.log("ClientCreate: Creating lead-journey entry", leadJourneyData);
-      await dataProvider.create("lead-journey", {
-        data: leadJourneyData,
-      });
-      console.log("ClientCreate: Successfully created lead-journey entry");
+      await createLeadJourneyDealForContact(dataProvider, data, identity?.id);
     } catch (error) {
       notify("Client created but could not add to journey", { type: "warning" });
       console.error("ClientCreate: lead-journey create failed", error);
@@ -57,8 +45,8 @@ export const ClientCreate = () => {
         },
       }}
     >
-      <div className="mt-2 flex lg:mr-72">
-        <div className="flex-1">
+      <div className="mt-2 flex justify-center">
+        <div className="w-[90%] max-w-6xl">
           <Form 
             defaultValues={{ 
               sales_id: identity?.id,

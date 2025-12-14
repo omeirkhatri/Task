@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 
 import { NoteInputs } from "./NoteInputs";
-import { formatNoteDate, getCurrentDate } from "./utils";
 
 const foreignKeyMapping = {
   contacts: "contact_id",
@@ -70,26 +69,21 @@ const NoteCreateButton = ({
   if (!record) return null;
 
   const resetValues: {
-    date: string;
     text: null;
     attachments: null;
-    status?: string;
+    tagged_user_ids?: undefined;
   } = {
-    date: getCurrentDate(),
     text: null,
     attachments: null,
+    tagged_user_ids: undefined,
   };
-
-  if (reference === "contacts") {
-    resetValues.status = "warm";
-  }
 
   const handleSuccess = (data: any) => {
     reset(resetValues, { keepValues: false });
     refetch();
     update(reference, {
       id: (record && record.id) as unknown as Identifier,
-      data: { last_seen: new Date().toISOString(), status: data.status },
+      data: { last_seen: new Date().toISOString() },
       previousData: record,
     });
     notify("Note added");
@@ -106,7 +100,8 @@ const NoteCreateButton = ({
             ...restData,
             [foreignKeyMapping[reference]]: record.id,
             sales_id: identity?.id,
-            date: formatNoteDate(data.date || getCurrentDate()),
+            // Always save notes with current time
+            date: new Date().toISOString(),
           };
           // Only include tagged_user_ids if it's a non-empty array
           // This avoids schema cache issues if the column doesn't exist yet

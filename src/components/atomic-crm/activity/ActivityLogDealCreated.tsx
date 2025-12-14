@@ -29,7 +29,11 @@ export function ActivityLogDealCreated({
               <SaleName />
             </ReferenceField>
             &nbsp;added lead&nbsp;
-            <Link to={`/lead-journey/${deal.id}/show`}>{deal.name}</Link>
+            <Link to={`/lead-journey/${deal.id}/show`}>
+              {deal.first_name || deal.last_name
+                ? `${deal.first_name ?? ""} ${deal.last_name ?? ""}`.trim()
+                : deal.name || "New Lead"}
+            </Link>
             {deal.lead_id && (
               <>
                 &nbsp;for&nbsp;

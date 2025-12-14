@@ -23,6 +23,14 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
 });
 
+// "en-CA" yields ISO-like date strings (YYYY-MM-DD)
+const ymdDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: CRM_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 const timeFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: CRM_TIME_ZONE,
   hour: "2-digit",
@@ -133,6 +141,16 @@ export function crmDateInputString(value: DateInput = new Date()) {
   const date = parseDate(value);
   if (!date) return "";
   return dateFormatter.format(date);
+}
+
+/**
+ * Returns a date string in YYYY-MM-DD format, using the CRM timezone.
+ * This is ideal for `<input type="date">` values and react-hook-form state.
+ */
+export function crmDateYmdInputString(value: DateInput = new Date()) {
+  const date = parseDate(value);
+  if (!date) return "";
+  return ymdDateFormatter.format(date);
 }
 
 export function crmDateStringToDate(value: string | null | undefined) {

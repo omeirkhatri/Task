@@ -178,3 +178,5 @@ END $$;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."services" TO "authenticated";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."services" TO "service_role";
 
+
+

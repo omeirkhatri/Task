@@ -70,7 +70,12 @@ export function ContactImportDialog({
 
   useEffect(() => {
     if (importer.state === "complete") {
+      // Refresh to show imported contacts in lead journey
       refresh();
+      // Additional refresh after a short delay to ensure backend has processed all lead-journey entries
+      setTimeout(() => {
+        refresh();
+      }, 500);
     }
   }, [importer.state, refresh]);
 

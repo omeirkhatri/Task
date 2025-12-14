@@ -73,7 +73,7 @@ export const DealListContent = () => {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div 
-        className="grid gap-4 min-h-0 overflow-hidden h-[calc(100vh-14rem)] mt-4" 
+        className="grid gap-4 h-[calc(100vh-14rem)] mt-4" 
         style={{
           gridTemplateColumns: `repeat(${leadStages.length}, minmax(0, 1fr))`
         }}
@@ -139,7 +139,8 @@ export const updateDealStage = async (
     // Fetch all the deals in this stage (because the list may be filtered, but we need to update even non-filtered deals)
     const { data: columnDeals } = await dataProvider.getList("lead-journey", {
       sort: { field: "index", order: "ASC" },
-      pagination: { page: 1, perPage: 100 },
+      // Keep this large so reordering works even with many deals in a stage
+      pagination: { page: 1, perPage: 5000 },
       filter: { stage: source.stage },
     });
     const destinationIndex = destination.index ?? columnDeals.length + 1;
@@ -204,12 +205,12 @@ export const updateDealStage = async (
       await Promise.all([
         dataProvider.getList("lead-journey", {
           sort: { field: "index", order: "ASC" },
-          pagination: { page: 1, perPage: 100 },
+          pagination: { page: 1, perPage: 5000 },
           filter: { stage: source.stage },
         }),
         dataProvider.getList("lead-journey", {
           sort: { field: "index", order: "ASC" },
-          pagination: { page: 1, perPage: 100 },
+          pagination: { page: 1, perPage: 5000 },
           filter: { stage: destination.stage },
         }),
       ]);

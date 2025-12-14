@@ -44,3 +44,5 @@ WITH CHECK (true);
 -- Grant permissions
 GRANT SELECT, INSERT ON TABLE "public"."activity_log" TO "authenticated";
 GRANT SELECT, INSERT ON TABLE "public"."activity_log" TO "service_role";
+
+

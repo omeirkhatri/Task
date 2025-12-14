@@ -102,3 +102,5 @@ CREATE INDEX IF NOT EXISTS "quotes_contact_id_idx" ON "public"."quotes" ("contac
 CREATE INDEX IF NOT EXISTS "quotes_service_id_idx" ON "public"."quotes" ("service_id");
 CREATE INDEX IF NOT EXISTS "quotes_status_idx" ON "public"."quotes" ("status");
 
+
+

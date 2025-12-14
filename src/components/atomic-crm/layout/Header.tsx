@@ -24,6 +24,8 @@ const Header = () => {
     currentPath = "/lead-journey";
   } else if (matchPath("/tasks", location.pathname)) {
     currentPath = "/tasks";
+  } else if (matchPath("/notes", location.pathname)) {
+    currentPath = "/notes";
   } else {
     currentPath = false;
   }
@@ -75,6 +77,11 @@ const Header = () => {
                   label="Tasks"
                   to="/tasks"
                   isActive={currentPath === "/tasks"}
+                />
+                <NavigationTab
+                  label="Notes"
+                  to="/notes"
+                  isActive={currentPath === "/notes"}
                 />
               </nav>
             </div>

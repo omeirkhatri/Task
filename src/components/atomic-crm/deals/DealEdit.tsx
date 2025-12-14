@@ -64,7 +64,11 @@ function EditHeader() {
     <DialogTitle className="pb-0">
       <div className="flex justify-between items-start mb-8">
         <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold">Edit {deal.name} deal</h2>
+          <h2 className="text-2xl font-semibold">
+            Edit {deal.first_name || deal.last_name
+              ? `${deal.first_name ?? ""} ${deal.last_name ?? ""}`.trim()
+              : deal.name || "New Lead"} deal
+          </h2>
         </div>
         <div className="flex gap-2 pr-12">
           <DeleteButton />

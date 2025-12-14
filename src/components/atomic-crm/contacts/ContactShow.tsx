@@ -18,6 +18,12 @@ import { Task as TaskComponent } from "../tasks/Task";
 import { AddTask } from "../tasks/AddTask";
 import { UnifiedNotesIterator } from "../notes/UnifiedNotesIterator";
 import { ActivityLog } from "../activity/ActivityLog";
+import {
+  crmAddDays,
+  crmEndOfDay,
+  crmEndOfWeek,
+  crmStartOfDay,
+} from "../misc/timezone";
 
 export const ContactShow = () => (
   <ShowBase>
@@ -64,33 +70,57 @@ const ContactShowContent = () => {
     filter: record?.id ? { contact_id: record.id } : {},
   }, { enabled: !!record?.id });
 
-  // Sort tasks: Due ones on top (newest to oldest), then completed ones (newest to oldest)
-  const sortedTasks = useMemo(() => {
-    if (!tasks) return [];
-    
-    const dueTasks = tasks
-      .filter(task => !task.done_date)
-      .sort((a, b) => {
-        // Sort by id DESC (newest created first, assuming auto-incrementing IDs)
-        // If IDs are not sequential, fall back to due_date DESC
-        if (typeof a.id === 'number' && typeof b.id === 'number') {
-          return b.id - a.id;
-        }
-        const dateA = new Date(a.due_date || 0).valueOf();
-        const dateB = new Date(b.due_date || 0).valueOf();
-        return dateB - dateA;
-      });
-    
-    const completedTasks = tasks
-      .filter(task => task.done_date)
-      .sort((a, b) => {
-        // Sort by done_date DESC (newest completed first)
-        const dateA = new Date(a.done_date || 0).valueOf();
-        const dateB = new Date(b.done_date || 0).valueOf();
-        return dateB - dateA;
-      });
-    
-    return [...dueTasks, ...completedTasks];
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
+
+  const groupedTasks = useMemo(() => {
+    const empty = {
+      overdue: [] as Task[],
+      today: [] as Task[],
+      tomorrow: [] as Task[],
+      thisWeek: [] as Task[],
+      later: [] as Task[],
+      completed: [] as Task[],
+    };
+    if (!tasks) return empty;
+
+    const startOfToday = crmStartOfDay() ?? new Date();
+    const endOfToday = crmEndOfDay() ?? new Date();
+    const endOfTomorrow = crmEndOfDay(crmAddDays(new Date(), 1)) ?? new Date();
+    const endOfWeek = crmEndOfWeek() ?? new Date();
+
+    for (const task of tasks) {
+      if (task.done_date) {
+        empty.completed.push(task);
+        continue;
+      }
+
+      const due = task.due_date ? new Date(task.due_date) : null;
+      if (!due || Number.isNaN(due.getTime())) {
+        empty.later.push(task);
+        continue;
+      }
+
+      if (due < startOfToday) empty.overdue.push(task);
+      else if (due <= endOfToday) empty.today.push(task);
+      else if (due <= endOfTomorrow) empty.tomorrow.push(task);
+      else if (due <= endOfWeek) empty.thisWeek.push(task);
+      else empty.later.push(task);
+    }
+
+    const byDueDateAsc = (a: Task, b: Task) =>
+      new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime();
+
+    empty.overdue.sort(byDueDateAsc);
+    empty.today.sort(byDueDateAsc);
+    empty.tomorrow.sort(byDueDateAsc);
+    empty.thisWeek.sort(byDueDateAsc);
+    empty.later.sort(byDueDateAsc);
+
+    empty.completed.sort(
+      (a, b) => new Date(b.done_date || 0).getTime() - new Date(a.done_date || 0).getTime(),
+    );
+
+    return empty;
   }, [tasks]);
 
   const form = useForm<{ description: string }>({
@@ -271,13 +301,100 @@ const ContactShowContent = () => {
                 <RecordContextProvider value={record}>
                   <AddTask />
                 </RecordContextProvider>
-                {sortedTasks && sortedTasks.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {sortedTasks.map((task) => (
-                      <TaskComponent task={task} key={task.id} />
-                    ))}
-                  </div>
-                )}
+                <div className="mt-4 space-y-6">
+                  {tasks && tasks.length > 0 ? (
+                    <>
+                      {groupedTasks.overdue.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            Overdue
+                          </p>
+                          <div className="space-y-2">
+                            {groupedTasks.overdue.map((task) => (
+                              <TaskComponent task={task} key={task.id} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {groupedTasks.today.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            Today
+                          </p>
+                          <div className="space-y-2">
+                            {groupedTasks.today.map((task) => (
+                              <TaskComponent task={task} key={task.id} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {groupedTasks.tomorrow.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            Tomorrow
+                          </p>
+                          <div className="space-y-2">
+                            {groupedTasks.tomorrow.map((task) => (
+                              <TaskComponent task={task} key={task.id} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {groupedTasks.thisWeek.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            This Week
+                          </p>
+                          <div className="space-y-2">
+                            {groupedTasks.thisWeek.map((task) => (
+                              <TaskComponent task={task} key={task.id} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {groupedTasks.later.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            Later
+                          </p>
+                          <div className="space-y-2">
+                            {groupedTasks.later.map((task) => (
+                              <TaskComponent task={task} key={task.id} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {groupedTasks.completed.length > 0 && (
+                        <div className="space-y-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="cursor-pointer"
+                            onClick={() => setShowCompletedTasks((v) => !v)}
+                          >
+                            {showCompletedTasks ? "Hide" : "Show"} completed (
+                            {groupedTasks.completed.length})
+                          </Button>
+                          {showCompletedTasks && (
+                            <div className="space-y-2">
+                              {groupedTasks.completed.map((task) => (
+                                <TaskComponent task={task} key={task.id} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No tasks yet</p>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>

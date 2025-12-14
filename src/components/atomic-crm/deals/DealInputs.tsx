@@ -20,12 +20,18 @@ export const DealInputs = () => {
 const DealInfoInputs = () => {
   return (
     <div className="flex flex-col gap-4 flex-1">
-      <TextInput
-        source="name"
-        label="Lead Status Name"
-        validate={required()}
-        helperText={false}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <TextInput
+          source="first_name"
+          label="First Name"
+          helperText={false}
+        />
+        <TextInput
+          source="last_name"
+          label="Last Name"
+          helperText={false}
+        />
+      </div>
     </div>
   );
 };

@@ -7,34 +7,14 @@ export const Welcome = () => (
     </CardHeader>
     <CardContent className="px-4">
       <p className="text-sm mb-4">
-        <a
-          href="https://marmelab.com/atomic-crm"
-          className="underline hover:no-underline"
-        >
-          Atomic CRM
-        </a>{" "}
-        is a template designed to help you quickly build your own CRM.
+        <b>BestDOC CRM</b> helps you manage leads, clients, tasks, and notes.
       </p>
       <p className="text-sm mb-4">
         This demo runs on a mock API, so you can explore and modify the data. It
         resets on reload. The full version uses Supabase for the backend.
       </p>
-      <p className="text-sm">
-        Powered by{" "}
-        <a
-          href="https://marmelab.com/shadcn-admin-kit"
-          className="underline hover:no-underline"
-        >
-          shadcn-admin-kit
-        </a>
-        , Atomic CRM is fully open-source. You can find the code at{" "}
-        <a
-          href="https://github.com/marmelab/atomic-crm"
-          className="underline hover:no-underline"
-        >
-          marmelab/atomic-crm
-        </a>
-        .
+      <p className="text-sm text-muted-foreground">
+        Tip: connect Supabase to persist data across reloads.
       </p>
     </CardContent>
   </Card>

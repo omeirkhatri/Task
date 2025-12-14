@@ -41,10 +41,16 @@ const DealList = () => {
 
   return (
     <List
-      perPage={100}
-      filter={{ "archived_at@is": null }}
+      // Lead Journey is a kanban board; pagination can hide newly created/imported leads
+      // (e.g. new deals often start with low index values like 0).
+      // Use a large page size so the board reflects the full pipeline.
+      perPage={5000}
+      // If a contact is deleted, the FK sets deals.lead_id to NULL (ON DELETE SET NULL).
+      // We don't want orphaned deals to keep showing as Lead Journey cards.
+      filter={{ "archived_at@is": null, "lead_id@not.is": null }}
       title={false}
-      sort={{ field: "index", order: "DESC" }}
+      // Lower index = higher priority/top of column (see DealListContent updateDealStage)
+      sort={{ field: "index", order: "ASC" }}
       filters={dealFilters}
       actions={
         <DealActions

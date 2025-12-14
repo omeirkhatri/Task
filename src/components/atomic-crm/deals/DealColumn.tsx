@@ -17,8 +17,8 @@ export const DealColumn = ({
   
   return (
     <div className="flex flex-col h-full min-w-0">
-      <Card className="flex flex-col h-full border-border/50 shadow-sm bg-card">
-        <CardHeader className="pb-2.5 px-4 pt-3 border-b border-border/50">
+      <Card className="flex flex-col h-full gap-0 border-border/50 shadow-sm bg-card">
+        <CardHeader className="flex-shrink-0 pb-2.5 px-4 pt-3 border-b border-border/50">
           <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <span className="truncate">{findDealLabel(leadStages, stage)}</span>
             {leadCount > 0 && (
@@ -28,13 +28,14 @@ export const DealColumn = ({
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2 bg-muted/20">
+        <CardContent className="flex-1 overflow-y-auto min-h-0 p-2 bg-muted/20">
           <Droppable droppableId={stage}>
             {(droppableProvided, snapshot) => (
               <div
                 ref={droppableProvided.innerRef}
                 {...droppableProvided.droppableProps}
-                className={`flex flex-col gap-2 h-full min-h-[150px] ${
+                // Don't force height - let content determine height so scroll works
+                className={`flex flex-col gap-2 min-h-[150px] ${
                   snapshot.isDraggingOver ? "bg-muted/50 rounded-lg transition-colors" : ""
                 }`}
               >

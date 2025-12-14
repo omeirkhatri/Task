@@ -48,6 +48,7 @@ import { contactOptionText } from "../misc/ContactOption";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import {
   crmDateInputString,
+  crmDateYmdInputString,
   crmDateStringToISO,
   crmStartOfDay,
 } from "../misc/timezone";
@@ -133,11 +134,29 @@ export const AddTask = ({
         record={{
           type: "None",
           contact_id: contact?.id,
-          due_date: crmDateInputString() || new Date().toISOString().slice(0, 10),
+          // Keep due_date in form state as YYYY-MM-DD (matches <input type="date">)
+          due_date: crmDateYmdInputString() || new Date().toISOString().slice(0, 10),
           sales_id: identity.id,
           // Explicitly omit tagged_user_ids from initial record to avoid schema cache issues
         }}
         transform={(data) => {
+          const rawText = String(data.text ?? "").trim();
+          const textWithoutDateHints = rawText
+            // relative phrases
+            .replace(/\b(day\s+after\s+tomorrow|day\s+after\s+tmrw)\b/gi, "")
+            .replace(/\b(next\s+week|next\s+month)\b/gi, "")
+            .replace(/\b(in\s+\d+\s+days?|\d+\s+days?\s+from\s+now)\b/gi, "")
+            .replace(/\b(today|tomorrow)\b/gi, "")
+            // date literals
+            .replace(/\b\d{4}-\d{2}-\d{2}\b/g, "")
+            .replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g, "")
+            // cleanup whitespace/punctuation
+            .replace(/\s{2,}/g, " ")
+            .replace(/^[\s,.;:-]+|[\s,.;:-]+$/g, "")
+            .trim();
+          const cleanedText =
+            textWithoutDateHints.length > 0 ? textWithoutDateHints : rawText;
+
           const dueDateIso =
             crmDateStringToISO(data.due_date) ||
             crmStartOfDay()?.toISOString() ||
@@ -147,7 +166,7 @@ export const AddTask = ({
           const result: any = {
             type: data.type,
             contact_id: data.contact_id,
-            text: data.text,
+            text: cleanedText,
             due_date: dueDateIso,
             sales_id: data.sales_id,
           };
@@ -262,7 +281,7 @@ const TaskDescriptionInput = () => {
     try {
       const dateObj = new Date(date);
       if (!isNaN(dateObj.getTime())) {
-        const dateStr = crmDateInputString(dateObj);
+        const dateStr = crmDateYmdInputString(dateObj);
         if (dateStr) {
           setValue("due_date", dateStr, { shouldDirty: true, shouldValidate: false });
         }

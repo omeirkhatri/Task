@@ -1,33 +1,113 @@
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { SelectInput } from "@/components/admin/select-input";
-import { DateTimeInput } from "@/components/admin/date-time-input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useInput, useResourceContext, FieldTitle } from "ra-core";
+import { useInput, useNotify } from "ra-core";
 import {
   FormControl,
   FormError,
   FormField,
-  FormLabel,
 } from "@/components/admin/form";
 import { InputHelperText } from "@/components/admin/input-helper-text";
+import { Paperclip, X } from "lucide-react";
 
-import { Status } from "../misc/Status";
-import { useConfigurationContext } from "../root/ConfigurationContext";
-import { getCurrentDate } from "./utils";
 import { SmartTextInput } from "../misc/SmartTextInput";
+import type { AttachmentNote } from "../types";
+import { supabase } from "../providers/supabase/supabase";
 
 export const NoteInputs = ({ showStatus }: { showStatus?: boolean }) => {
-  const { noteStatuses } = useConfigurationContext();
-  const { setValue } = useFormContext();
-  const [displayMore, setDisplayMore] = useState(false);
-  const resource = useResourceContext();
+  // showStatus is intentionally ignored — user requested removing Status UI.
+  void showStatus;
+
+  const notify = useNotify();
+  const { setValue, watch } = useFormContext();
   const { id, field } = useInput({ source: "text" });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const attachments = (watch("attachments") as AttachmentNote[] | undefined) ?? [];
 
   const handleUsersTagged = (userIds: number[]) => {
     // Update the tagged_user_ids field when users are tagged
     setValue("tagged_user_ids", userIds.length > 0 ? userIds : undefined, { shouldDirty: true });
+  };
+
+  const uploadAttachment = async (file: File): Promise<AttachmentNote> => {
+    const ext = file.name.split(".").pop() || "png";
+    const base =
+      (globalThis.crypto as any)?.randomUUID?.() ??
+      `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const path = `${base}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("attachments")
+      .upload(path, file, {
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from("attachments").getPublicUrl(path);
+    return {
+      src: data.publicUrl,
+      title: file.name || `image.${ext}`,
+      path,
+      type: file.type || undefined,
+      // rawFile is only for client-side; we don't persist it
+      rawFile: file,
+    };
+  };
+
+  const addFiles = async (files: File[]) => {
+    const imageFiles = files.filter((f) => f.type?.startsWith("image/"));
+    if (imageFiles.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const uploaded = await Promise.all(imageFiles.map(uploadAttachment));
+      const next = [...attachments, ...uploaded].map(({ rawFile: _raw, ...rest }) => rest as any);
+      // store without rawFile (DB column is jsonb[])
+      setValue("attachments", next, { shouldDirty: true });
+      notify(`${uploaded.length} image${uploaded.length === 1 ? "" : "s"} attached`, {
+        type: "success",
+      });
+    } catch (e: any) {
+      console.error("NoteInputs: upload failed", e);
+      notify("Failed to upload image", { type: "error" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageItems = Array.from(items).filter((it) => it.type?.startsWith("image/"));
+    if (imageItems.length === 0) return;
+
+    e.preventDefault();
+    const files = imageItems
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => !!f)
+      .map((f) => (f.name ? f : new File([f], `pasted-image-${Date.now()}.png`, { type: f.type })));
+
+    await addFiles(files);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    if (files.length === 0) return;
+    const hasImages = files.some((f) => f.type?.startsWith("image/"));
+    if (!hasImages) return;
+    e.preventDefault();
+    e.stopPropagation();
+    await addFiles(files);
+  };
+
+  const removeAttachmentAt = (index: number) => {
+    const next = attachments.filter((_, i) => i !== index);
+    setValue("attachments", next.length ? next : undefined, { shouldDirty: true });
   };
 
   return (
@@ -42,68 +122,81 @@ export const NoteInputs = ({ showStatus }: { showStatus?: boolean }) => {
             placeholder="Add a note. Try tagging someone with @username"
             rows={6}
             onUsersTagged={handleUsersTagged}
+            onPaste={handlePaste as any}
+            onDrop={handleDrop as any}
+            onDragOver={(e: React.DragEvent) => {
+              // allow dropping images
+              if (Array.from(e.dataTransfer?.items ?? []).some((it) => it.type?.startsWith("image/"))) {
+                e.preventDefault();
+              }
+            }}
           />
         </FormControl>
         <InputHelperText helperText={false} />
         <FormError />
       </FormField>
 
-      {!displayMore && (
-        <div className="flex justify-end items-center gap-2">
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => {
-              setDisplayMore(!displayMore);
-              setValue("date", getCurrentDate());
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={async (e) => {
+              const files = Array.from(e.target.files ?? []);
+              // reset so selecting the same file twice works
+              e.currentTarget.value = "";
+              await addFiles(files);
             }}
-            className="text-sm text-muted-foreground underline hover:no-underline p-0 h-auto cursor-pointer"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={isUploading}
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach images (you can also paste or drag & drop)"
           >
-            Show options
+            <Paperclip className="h-4 w-4" />
+            {isUploading ? "Uploading..." : "Attach images"}
           </Button>
-          <span className="text-sm text-muted-foreground">
-            (change details)
+          <span className="text-xs text-muted-foreground">
+            Tip: paste an image from clipboard or drag & drop into the note.
           </span>
         </div>
-      )}
-
-      <div
-        className={cn(
-          "space-y-3 mt-3 overflow-hidden transition-transform ease-in-out duration-300 origin-top",
-          !displayMore ? "scale-y-0 max-h-0 h-0" : "scale-y-100",
-        )}
-      >
-        <div className="grid grid-cols-2 gap-4">
-          {showStatus && (
-            <SelectInput
-              source="status"
-              choices={noteStatuses.map((status) => ({
-                id: status.value,
-                name: status.label,
-                value: status.value,
-              }))}
-              optionText={optionRenderer}
-              defaultValue={"warm"}
-              helperText={false}
-            />
-          )}
-          <DateTimeInput
-            source="date"
-            label="Date"
-            helperText={false}
-            className="text-primary"
-            defaultValue={getCurrentDate()}
-          />
-        </div>
       </div>
-    </Fragment>
-  );
-};
 
-const optionRenderer = (choice: any) => {
-  return (
-    <div>
-      <Status status={choice.value} /> {choice.name}
-    </div>
+      {attachments.length > 0 && (
+        <div className="mt-3">
+          <div className="text-xs text-muted-foreground mb-2">Attachments</div>
+          <div className="grid grid-cols-4 gap-3">
+            {attachments.map((att, index) => (
+              <div key={`${att.src}-${index}`} className="relative border rounded-md overflow-hidden">
+                <img
+                  src={att.src}
+                  alt={att.title}
+                  className="w-full h-20 object-cover cursor-pointer"
+                  onClick={() => window.open(att.src, "_blank")}
+                />
+                <button
+                  type="button"
+                  className={cn(
+                    "absolute top-1 right-1 rounded-full bg-background/80 border p-1",
+                    "hover:bg-background",
+                  )}
+                  onClick={() => removeAttachmentAt(index)}
+                  title="Remove"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Fragment>
   );
 };

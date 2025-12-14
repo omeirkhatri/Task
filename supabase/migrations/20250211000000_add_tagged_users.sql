@@ -15,3 +15,5 @@ create index if not exists "contactNotes_tagged_user_ids_idx" on "public"."conta
 
 -- Create index for faster queries on tagged users in dealNotes
 create index if not exists "dealNotes_tagged_user_ids_idx" on "public"."dealNotes" using gin ("tagged_user_ids");
+
+

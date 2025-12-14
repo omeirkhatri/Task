@@ -18,9 +18,14 @@ export function SalesCreate() {
     mutationFn: async (data: SalesFormData) => {
       return dataProvider.salesCreate(data);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      const passwordProvided =
+        typeof variables?.password === "string" &&
+        variables.password.trim().length > 0;
       notify(
-        "User created. They will soon receive an email to set their password.",
+        passwordProvided
+          ? "User created. Password was set."
+          : "User created. They will soon receive an email to set their password.",
       );
       redirect("/sales");
     },
@@ -42,7 +47,7 @@ export function SalesCreate() {
         </CardHeader>
         <CardContent>
           <SimpleForm onSubmit={onSubmit as SubmitHandler<any>}>
-            <SalesInputs />
+            <SalesInputs showPassword />
           </SimpleForm>
         </CardContent>
       </Card>

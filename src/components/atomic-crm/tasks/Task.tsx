@@ -21,7 +21,7 @@ import { useRecordContext, RecordContextProvider } from "ra-core";
 
 import type { Contact, Task as TData, Sale } from "../types";
 import { TaskEdit } from "./TaskEdit";
-import { crmAddDays, crmDateInputString } from "../misc/timezone";
+import { crmAddDays } from "../misc/timezone";
 import { RelativeDate } from "../misc/RelativeDate";
 
 // Component to display user initials
@@ -170,12 +170,11 @@ export const Task = ({
                           <DropdownMenuItem
                             className="cursor-pointer"
                             onClick={() => {
+                              const tomorrow = crmAddDays(new Date(), 1)?.toISOString();
                               update("tasks", {
                                 id: task.id,
                                 data: {
-                                  due_date:
-                                    crmDateInputString(crmAddDays(new Date(), 1)) ||
-                                    crmDateInputString(),
+                                  due_date: tomorrow || new Date().toISOString(),
                                 },
                                 previousData: task,
                               });
@@ -186,12 +185,11 @@ export const Task = ({
                           <DropdownMenuItem
                             className="cursor-pointer"
                             onClick={() => {
+                              const nextWeek = crmAddDays(new Date(), 7)?.toISOString();
                               update("tasks", {
                                 id: task.id,
                                 data: {
-                                  due_date:
-                                    crmDateInputString(crmAddDays(new Date(), 7)) ||
-                                    crmDateInputString(),
+                                  due_date: nextWeek || new Date().toISOString(),
                                 },
                                 previousData: task,
                               });

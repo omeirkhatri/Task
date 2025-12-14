@@ -29,7 +29,7 @@ export type SignUpData = {
 export type SalesFormData = {
   avatar: string;
   email: string;
-  password: string;
+  password?: string;
   first_name: string;
   last_name: string;
   administrator: boolean;
@@ -145,7 +145,9 @@ export type ContactNote = {
 } & Pick<RaRecord, "id">;
 
 export type Deal = {
-  name: string;
+  name?: string; // Deprecated: use first_name and last_name instead
+  first_name?: string;
+  last_name?: string;
   company_id: Identifier;
   contact_ids: Identifier[];
   category: string;

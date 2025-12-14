@@ -23,6 +23,7 @@ import {
 } from "../providers/supabase";
 import sales from "../sales";
 import servicesResource from "../services";
+import { NotesPage } from "../notes/NotesPage";
 import { SettingsPage } from "../settings/SettingsPage";
 import { TasksPage } from "../tasks/TasksPage";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
@@ -161,6 +162,7 @@ export const CRM = ({
         <CustomRoutes>
           <Route path={SettingsPage.path} element={<SettingsPage />} />
           <Route path={TasksPage.path} element={<TasksPage />} />
+          <Route path={NotesPage.path} element={<NotesPage />} />
         </CustomRoutes>
         <Resource name="lead-journey" options={{ label: "Lead Journey" }} {...deals} />
         <Resource name="contacts" options={{ label: "Leads" }} {...contacts} />

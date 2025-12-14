@@ -299,11 +299,18 @@ export const TasksPage = () => {
     <div className="flex flex-col w-full lg:h-[calc(100vh-8rem)] h-auto -mx-4 -mt-4 p-6 gap-4 bg-background">
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0 pb-2">
-        <div className="flex items-center gap-3">
-          <CheckSquare className="text-muted-foreground w-6 h-6" />
-          <h1 className="text-2xl font-semibold text-foreground">
-            Tasks
-          </h1>
+        {/* Search Bar (moved into header) */}
+        <div className="flex-shrink-0 w-full max-w-md">
+          <div className="flex flex-grow relative">
+            <input
+              type="text"
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-8"
+            />
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -329,20 +336,6 @@ export const TasksPage = () => {
             Completed Tasks
           </Button>
           <AddTask display="icon" selectContact />
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="flex-shrink-0 max-w-md">
-        <div className="flex flex-grow relative">
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-8"
-          />
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         </div>
       </div>
 

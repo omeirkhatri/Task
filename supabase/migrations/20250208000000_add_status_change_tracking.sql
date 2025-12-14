@@ -11,3 +11,5 @@ ADD COLUMN IF NOT EXISTS "company_id" bigint;
 -- Add indexes for faster queries
 CREATE INDEX IF NOT EXISTS "activity_log_deal_id_idx" ON "public"."activity_log" ("deal_id");
 CREATE INDEX IF NOT EXISTS "activity_log_company_id_idx" ON "public"."activity_log" ("company_id");
+
+

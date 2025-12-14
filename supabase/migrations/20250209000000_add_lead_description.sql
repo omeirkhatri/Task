@@ -48,3 +48,5 @@ LEFT JOIN
     "public"."companies" c ON co.company_id = c.id
 GROUP BY
     co.id, c.name;
+
+

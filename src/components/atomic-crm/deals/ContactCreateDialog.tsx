@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 
 import type { Contact } from "../types";
 import { LeadInputs } from "../contacts/LeadInputs";
+import { createLeadJourneyDealForContact } from "./createLeadJourneyDeal";
 
 export const ContactCreateDialog = ({ 
   open, 
@@ -35,21 +36,23 @@ export const ContactCreateDialog = ({
   };
 
   const handleSuccess = async (data: Contact) => {
-    // Create a corresponding deal/lead-journey entry with stage "new"
-    await dataProvider.create("lead-journey", {
-      data: {
-        name: `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim(),
-        lead_id: data.id,
-        stage: "new",
-        sales_id: data.sales_id,
-        index: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    });
+    try {
+      await createLeadJourneyDealForContact(dataProvider, data, identity?.id);
 
-    refresh();
-    handleClose();
+      // Force refresh of the lead journey list
+      refresh();
+      
+      // Small delay to ensure the backend has processed the creation
+      setTimeout(() => {
+        refresh();
+        handleClose();
+      }, 100);
+    } catch (error) {
+      console.error("Error creating lead-journey entry:", error);
+      // Still refresh and close even if lead-journey creation fails
+      refresh();
+      handleClose();
+    }
   };
 
   return (

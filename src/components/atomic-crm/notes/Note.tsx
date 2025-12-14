@@ -7,7 +7,7 @@ import {
   useUpdate,
   WithRecord,
 } from "ra-core";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { FieldValues, SubmitHandler } from "react-hook-form";
 import { ReferenceField } from "@/components/admin/reference-field";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,12 @@ import { NoteInputs } from "./NoteInputs";
 export const Note = ({
   showStatus,
   note,
+  context,
 }: {
   showStatus?: boolean;
   note: DealNote | ContactNote;
   isLast: boolean;
+  context?: ReactNode;
 }) => {
   const [isHover, setHover] = useState(false);
   const [isEditing, setEditing] = useState(false);
@@ -99,7 +101,9 @@ export const Note = ({
                     <WithRecord render={(record) => <SaleName sale={record} />} />
                   </ReferenceField>
                 </span>
-                <span className="text-sm text-muted-foreground">added a note</span>
+                <span className="text-sm text-muted-foreground">
+                  added a note{context ? <> on {context}</> : null}
+                </span>
                 {showStatus && note.status && (
                   <Status className="ml-1" status={note.status} />
                 )}

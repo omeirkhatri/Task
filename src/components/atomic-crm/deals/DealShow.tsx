@@ -121,8 +121,10 @@ const DealShowContent = () => {
   }).length;
 
   const displayName = contact 
-    ? `${contact.first_name || ""} ${contact.last_name || ""}`.trim() || record.name
-    : record.name;
+    ? `${contact.first_name || ""} ${contact.last_name || ""}`.trim() || "New Lead"
+    : record.first_name || record.last_name
+    ? `${record.first_name ?? ""} ${record.last_name ?? ""}`.trim()
+    : record.name || "New Lead";
 
   return (
     <>

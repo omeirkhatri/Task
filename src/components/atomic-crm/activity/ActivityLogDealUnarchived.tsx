@@ -42,7 +42,11 @@ export function ActivityLogDealUnarchived({
                 <TextField source="last_name" />
               </ReferenceField>
             ) : (
-              <Link to={`/lead-journey/${deal.id}/show`}>{deal.name}</Link>
+              <Link to={`/lead-journey/${deal.id}/show`}>
+                {deal.first_name || deal.last_name
+                  ? `${deal.first_name ?? ""} ${deal.last_name ?? ""}`.trim()
+                  : deal.name || "New Lead"}
+              </Link>
             )}
           </span>
         </div>
@@ -53,3 +57,5 @@ export function ActivityLogDealUnarchived({
     </div>
   );
 }
+
+
