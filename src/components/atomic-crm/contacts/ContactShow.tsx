@@ -1,4 +1,12 @@
-import { ShowBase, useShowContext, useGetList, RecordContextProvider, useRefresh, useUpdate, useNotify } from "ra-core";
+import {
+  ShowBase,
+  useShowContext,
+  useGetList,
+  RecordContextProvider,
+  useRefresh,
+  useUpdate,
+  useNotify,
+} from "ra-core";
 import { ReferenceField } from "@/components/admin/reference-field";
 import { TextField } from "@/components/admin/text-field";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +17,7 @@ import { Edit, Save, CircleX } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import type { SubmitHandler, FieldValues } from "react-hook-form";
 import { useForm, FormProvider } from "react-hook-form";
+import { useLocation } from "react-router";
 
 import type { Contact, Task, Quote, Deal } from "../types";
 import { ContactAside } from "./ContactAside";
@@ -37,6 +46,7 @@ const ContactShowContent = () => {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [update, { isPending: isUpdating }] = useUpdate();
   const notify = useNotify();
+  const location = useLocation();
 
   // Fetch deals associated with this contact to get deal IDs for notes
   // Fetch both archived and non-archived deals
@@ -137,6 +147,27 @@ const ContactShowContent = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record?.id]);
 
+  // If we deep-link with a hash (#note-123 / #task-456), scroll to it once content renders.
+  useEffect(() => {
+    if (!record) return;
+    const hash = (location.hash || "").replace(/^#/, "");
+    if (!hash) return;
+
+    let tries = 0;
+    const tryScroll = () => {
+      tries += 1;
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        return;
+      }
+      if (tries < 20) {
+        setTimeout(tryScroll, 150);
+      }
+    };
+    tryScroll();
+  }, [location.hash, record]);
+
   const handleDescriptionUpdate: SubmitHandler<FieldValues> = (values) => {
     if (!record) return;
     update(
@@ -169,6 +200,14 @@ const ContactShowContent = () => {
   };
 
   if (isPending || !record) return null;
+
+  const defaultTab = (() => {
+    const tab = new URLSearchParams(location.search).get("tab");
+    if (tab === "notes" || tab === "quotes" || tab === "tasks" || tab === "activity") {
+      return tab;
+    }
+    return "activity";
+  })();
 
   return (
     <div className="mt-2 mb-2 flex gap-8">
@@ -258,7 +297,7 @@ const ContactShowContent = () => {
               </div>
             </div>
             
-            <Tabs defaultValue="activity" className="mt-6">
+            <Tabs defaultValue={defaultTab} className="mt-6">
               <TabsList className="w-full">
                 <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
                 <TabsTrigger value="notes" className="flex-1">Notes</TabsTrigger>

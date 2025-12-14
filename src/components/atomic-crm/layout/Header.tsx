@@ -8,6 +8,7 @@ import { UserMenu } from "@/components/admin/user-menu";
 import { useUserMenu } from "@/hooks/user-menu-context";
 
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { NotificationsMenu } from "./NotificationsMenu";
 
 const Header = () => {
   const { darkModeLogo, lightModeLogo, title } = useConfigurationContext();
@@ -87,6 +88,7 @@ const Header = () => {
             </div>
             <div className="flex items-center">
               <ThemeModeToggle />
+              <NotificationsMenu />
               <RefreshButton />
               <UserMenu>
                 <ConfigurationMenu />

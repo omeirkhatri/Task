@@ -1,7 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { MoreVertical, CheckCircle2, Circle } from "lucide-react";
-import { useDeleteWithUndoController, useNotify, useUpdate } from "ra-core";
+import { MoreVertical } from "lucide-react";
+import {
+  RecordContextProvider,
+  useDeleteWithUndoController,
+  useNotify,
+  useRecordContext,
+  useUpdate,
+} from "ra-core";
 import { useEffect, useState } from "react";
+
 import { ReferenceField } from "@/components/admin/reference-field";
 import { ReferenceArrayField } from "@/components/admin/reference-array-field";
 import { SingleFieldList } from "@/components/admin/single-field-list";
@@ -15,14 +22,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useRecordContext, RecordContextProvider } from "ra-core";
 
-import type { Contact, Task as TData, Sale } from "../types";
-import { TaskEdit } from "./TaskEdit";
+import type { Contact, Sale, Task as TData } from "../types";
 import { crmAddDays } from "../misc/timezone";
-import { RelativeDate } from "../misc/RelativeDate";
+import { TaskEdit } from "./TaskEdit";
 
 // Component to display user initials
 const UserInitials = () => {
@@ -30,7 +34,7 @@ const UserInitials = () => {
   if (!record) return null;
   const initials = `${record.first_name?.charAt(0) || ""}${record.last_name?.charAt(0) || ""}`.toUpperCase();
   return (
-    <div 
+    <div
       className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium text-muted-foreground border border-border"
       title={`${record.first_name} ${record.last_name}`}
     >
@@ -48,6 +52,9 @@ export const Task = ({
   showContact?: boolean;
   showTimestamp?: boolean;
 }) => {
+  // showTimestamp is kept for compatibility with callers; timestamp is currently not displayed.
+  void showTimestamp;
+
   const notify = useNotify();
   const queryClient = useQueryClient();
 
@@ -57,8 +64,8 @@ export const Task = ({
     setOpenEdit(false);
   };
 
-  const [update, { isPending: isUpdatePending, isSuccess, variables }] =
-    useUpdate();
+  const [update, { isPending: isUpdatePending, isSuccess, variables }] = useUpdate();
+
   const { handleDelete } = useDeleteWithUndoController({
     resource: "tasks",
     record: task,
@@ -98,10 +105,13 @@ export const Task = ({
 
   return (
     <>
-      <Card className={cn(
-        "group border border-border/50 bg-card hover:border-border hover:shadow-sm transition-all duration-200",
-        isCompleted && "opacity-60"
-      )}>
+      <Card
+        id={`task-${task.id}`}
+        className={cn(
+          "group border border-border/50 bg-card hover:border-border hover:shadow-sm transition-all duration-200",
+          isCompleted && "opacity-60",
+        )}
+      >
         <CardContent className="p-2 flex items-start gap-2">
           <Checkbox
             id={labelId}
@@ -110,14 +120,18 @@ export const Task = ({
             disabled={isUpdatePending}
             className="mt-1 h-4 w-4 border-2 flex-shrink-0"
           />
-          
+
           <div className="flex flex-col flex-1 min-w-0 gap-1">
             <div className="flex items-start justify-between gap-2">
               {/* Description */}
-              <p className={cn(
-                "text-sm font-medium leading-snug break-words min-w-0",
-                isCompleted ? "line-through text-muted-foreground" : "text-foreground"
-              )}>
+              <p
+                className={cn(
+                  "text-sm font-medium leading-snug break-words min-w-0",
+                  isCompleted
+                    ? "line-through text-muted-foreground"
+                    : "text-foreground",
+                )}
+              >
                 {task.text || "No description"}
               </p>
 
@@ -135,7 +149,7 @@ export const Task = ({
                     </ReferenceArrayField>
                   </RecordContextProvider>
                 )}
-                
+
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -155,12 +169,12 @@ export const Task = ({
                           onClick={() => {
                             update("tasks", {
                               id: task.id,
-                              data: {
-                                done_date: null,
-                              },
+                              data: { done_date: null },
                               previousData: task,
                             });
-                            notify("Task added back to tasks board", { type: "success" });
+                            notify("Task added back to tasks board", {
+                              type: "success",
+                            });
                           }}
                         >
                           Add back to tasks
@@ -173,9 +187,7 @@ export const Task = ({
                               const tomorrow = crmAddDays(new Date(), 1)?.toISOString();
                               update("tasks", {
                                 id: task.id,
-                                data: {
-                                  due_date: tomorrow || new Date().toISOString(),
-                                },
+                                data: { due_date: tomorrow || new Date().toISOString() },
                                 previousData: task,
                               });
                             }}
@@ -188,9 +200,7 @@ export const Task = ({
                               const nextWeek = crmAddDays(new Date(), 7)?.toISOString();
                               update("tasks", {
                                 id: task.id,
-                                data: {
-                                  due_date: nextWeek || new Date().toISOString(),
-                                },
+                                data: { due_date: nextWeek || new Date().toISOString() },
                                 previousData: task,
                               });
                             }}
@@ -202,7 +212,10 @@ export const Task = ({
                       <DropdownMenuItem className="cursor-pointer" onClick={handleEdit}>
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer text-destructive" onClick={handleDelete}>
+                      <DropdownMenuItem
+                        className="cursor-pointer text-destructive"
+                        onClick={handleDelete}
+                      >
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -214,10 +227,14 @@ export const Task = ({
             {/* Footer Metadata */}
             <div className="flex items-center gap-2 text-xs min-w-0">
               {dueDate && (
-                <div className={cn(
-                  "flex items-center gap-1.5 whitespace-nowrap flex-shrink-0",
-                  isOverdue && !isCompleted ? "text-destructive font-medium" : "text-muted-foreground"
-                )}>
+                <div
+                  className={cn(
+                    "flex items-center gap-1.5 whitespace-nowrap flex-shrink-0",
+                    isOverdue && !isCompleted
+                      ? "text-destructive font-medium"
+                      : "text-muted-foreground",
+                  )}
+                >
                   {isOverdue && !isCompleted && (
                     <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
                   )}
@@ -239,7 +256,9 @@ export const Task = ({
                     className="text-muted-foreground hover:underline truncate block"
                     render={({ referenceRecord }) => {
                       if (!referenceRecord) return null;
-                      const fullName = `${referenceRecord?.first_name ?? ""} ${referenceRecord?.last_name ?? ""}`.trim() || "New Lead";
+                      const fullName =
+                        `${referenceRecord?.first_name ?? ""} ${referenceRecord?.last_name ?? ""}`.trim() ||
+                        "New Lead";
                       return (
                         <span className="truncate block" title={fullName}>
                           {fullName}

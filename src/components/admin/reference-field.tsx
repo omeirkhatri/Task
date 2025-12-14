@@ -102,11 +102,12 @@ export const ReferenceFieldView = <
 
   if (link) {
     return (
-      <div className={className}>
+      // Use a span wrapper so ReferenceField can be used inline without forcing line breaks.
+      <span className={className}>
         <Link to={link} onClick={stopPropagation}>
           {child}
         </Link>
-      </div>
+      </span>
     );
   }
 

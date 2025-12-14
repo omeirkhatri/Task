@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Archive, ArchiveRestore, Phone, Mail, MapPin, Stethoscope } from "lucide-react";
+import { useEffect } from "react";
 import {
   ShowBase,
   useDataProvider,
@@ -21,7 +22,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { subHours } from "date-fns";
 
 import { NotesIterator } from "../notes/NotesIterator";
@@ -63,6 +64,7 @@ export const DealShow = ({ open, id }: { open: boolean; id?: string }) => {
 const DealShowContent = () => {
   const { leadStages } = useConfigurationContext();
   const record = useRecordContext<Deal>();
+  const location = useLocation();
   if (!record) return null;
 
   // Fetch Contact data using lead_id
@@ -125,6 +127,32 @@ const DealShowContent = () => {
     : record.first_name || record.last_name
     ? `${record.first_name ?? ""} ${record.last_name ?? ""}`.trim()
     : record.name || "New Lead";
+
+  // Deep-link scrolling for #note-123 / #task-456 inside the dialog.
+  // We retry a few frames because the tab content may mount slightly later.
+  const defaultTab = (() => {
+    const tab = new URLSearchParams(location.search).get("tab");
+    if (tab === "notes" || tab === "quotes" || tab === "tasks") return tab;
+    return "notes";
+  })();
+
+  useEffect(() => {
+    const hash = (location.hash || "").replace(/^#/, "");
+    if (!hash) return;
+
+    let tries = 0;
+    const tryScroll = () => {
+      tries += 1;
+      const el = document.getElementById(hash);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        return;
+      }
+      if (tries < 24) setTimeout(tryScroll, 150);
+    };
+
+    tryScroll();
+  }, [location.hash, defaultTab]);
 
   return (
     <>
@@ -276,7 +304,7 @@ const DealShowContent = () => {
           {/* Tabs for Notes, Quotes, Tasks */}
           <div className="m-4">
             <Separator className="mb-4" />
-            <Tabs defaultValue="notes">
+            <Tabs defaultValue={defaultTab}>
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="notes" className="relative gap-2">
                   <span>Notes</span>

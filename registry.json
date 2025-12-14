@@ -349,6 +349,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/notes/NotesPage.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/notes/NotesIterator.tsx",
           "type": "registry:component"
         },
@@ -474,6 +478,10 @@
         },
         {
           "path": "src/components/atomic-crm/deals/deal.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/deals/createLeadJourneyDeal.ts",
           "type": "registry:component"
         },
         {

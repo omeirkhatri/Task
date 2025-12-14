@@ -81,6 +81,7 @@ export const Note = ({
 
   return (
     <Card
+      id={`note-${note.id}`}
       className="hover:shadow-md transition-shadow py-3 gap-2"
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -89,8 +90,9 @@ export const Note = ({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-2 flex-1 min-w-0">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm font-medium">
+              {/* Keep header on a single line; truncate if it overflows */}
+              <div className="flex items-center gap-2 min-w-0 whitespace-nowrap overflow-hidden">
+                <span className="text-sm font-medium flex-shrink-0">
                   <ReferenceField
                     record={note}
                     resource={resource}
@@ -101,11 +103,17 @@ export const Note = ({
                     <WithRecord render={(record) => <SaleName sale={record} />} />
                   </ReferenceField>
                 </span>
-                <span className="text-sm text-muted-foreground">
-                  added a note{context ? <> on {context}</> : null}
+                <span className="text-sm text-muted-foreground truncate min-w-0 overflow-hidden text-ellipsis">
+                  added a note
+                  {context ? (
+                    <>
+                      {" "}
+                      on <span className="inline whitespace-nowrap">{context}</span>
+                    </>
+                  ) : null}
                 </span>
                 {showStatus && note.status && (
-                  <Status className="ml-1" status={note.status} />
+                  <Status className="ml-1 flex-shrink-0" status={note.status} />
                 )}
               </div>
             </div>
