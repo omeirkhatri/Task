@@ -40,6 +40,8 @@ import { ContactListContent } from "./ContactListContent";
 import { ContactListFilter } from "./ContactListFilter";
 import { TopToolbar } from "../layout/TopToolbar";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export const ContactList = () => {
   const { identity } = useGetIdentity();
@@ -82,15 +84,85 @@ const ContactListLayout = () => {
   );
 };
 
-const ContactListActions = () => (
-  <TopToolbar>
-    <SortButton fields={["first_name", "last_name", "last_seen"]} />
-    <ContactImportButton />
-    <ExportButton exporter={exporter} />
-    <BulkLeadStageButton />
-    <CreateButton />
-  </TopToolbar>
-);
+const ContactListActions = () => {
+  const { filterValues = {}, setFilters } = useListContext<Contact>();
+  
+  // Parse current lead_stage filter
+  const parseLeadStages = (filter: string | undefined): string[] => {
+    if (!filter) return [];
+    return filter
+      .replace(/[()]/g, "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const currentStages = parseLeadStages(filterValues["lead_stage@in"] as string | undefined);
+  const hasConverted = currentStages.includes("converted");
+  const allNonConvertedStages = ["new", "contacted", "quoted", "qualified", "not-qualified"];
+  
+  // Determine if clients should be shown based on current filter
+  const shouldShowClients = React.useMemo(() => {
+    if (currentStages.length === 0) return true; // No filter = show all
+    if (hasConverted) return true; // "converted" is included
+    // Check if filter only contains non-converted stages (clients hidden)
+    const onlyNonConverted = currentStages.length > 0 && 
+      currentStages.every((s) => allNonConvertedStages.includes(s));
+    return !onlyNonConverted; // If only non-converted, clients are hidden
+  }, [currentStages, hasConverted, allNonConvertedStages]);
+
+  const handleToggleClients = (checked: boolean) => {
+    const updated = { ...filterValues };
+
+    if (checked) {
+      // Show clients: include "converted" or remove exclusion
+      if (currentStages.length === 0) {
+        // No filter, show all (including clients) - remove filter
+        delete updated["lead_stage@in"];
+      } else if (hasConverted) {
+        // Already includes "converted", do nothing
+        return;
+      } else {
+        // Add "converted" to existing stages
+        const newStages = [...currentStages, "converted"];
+        updated["lead_stage@in"] = `(${newStages.join(",")})`;
+      }
+    } else {
+      // Hide clients: exclude "converted" stage
+      const stagesWithoutConverted = currentStages.filter((s) => s !== "converted");
+      
+      if (stagesWithoutConverted.length > 0) {
+        // Keep other selected stages, exclude "converted"
+        updated["lead_stage@in"] = `(${stagesWithoutConverted.join(",")})`;
+      } else {
+        // No other stages selected, show all non-converted stages
+        updated["lead_stage@in"] = `(${allNonConvertedStages.join(",")})`;
+      }
+    }
+
+    setFilters(updated);
+  };
+
+  return (
+    <TopToolbar>
+      <SortButton fields={["first_name", "last_name", "last_seen"]} />
+      <ContactImportButton />
+      <ExportButton exporter={exporter} />
+      <BulkLeadStageButton />
+      <div className="flex items-center gap-2 px-2">
+        <Switch
+          id="show-clients"
+          checked={shouldShowClients}
+          onCheckedChange={handleToggleClients}
+        />
+        <Label htmlFor="show-clients" className="text-sm font-normal cursor-pointer">
+          Show Clients
+        </Label>
+      </div>
+      <CreateButton />
+    </TopToolbar>
+  );
+};
 
 const BulkLeadStageButton = () => {
   const { selectedIds } = useListContext<Contact>();

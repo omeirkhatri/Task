@@ -185,11 +185,6 @@ export const ContactListContent = () => {
                     );
                   })}
                 {`${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || "New Lead"}
-                {clientContactIds.has(contact.id) && (
-                  <Badge variant="default" className="text-xs">
-                    Client
-                  </Badge>
-                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 {contact.title}
