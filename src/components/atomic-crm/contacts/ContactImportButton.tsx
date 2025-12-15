@@ -25,6 +25,7 @@ import { FileField } from "@/components/admin/file-field";
 import { usePapaParse } from "../misc/usePapaParse";
 import type { ContactImportSchema } from "./useContactImport";
 import { useContactImport } from "./useContactImport";
+import { formatImportError } from "./formatImportError";
 import * as sampleCsv from "./contacts_export.csv?raw";
 
 export const ContactImportButton = () => {
@@ -178,22 +179,35 @@ export function ContactImportDialog({
                           View error details ({importer.errors.length})
                         </AccordionTrigger>
                         <AccordionContent>
-                          <div className="max-h-60 overflow-y-auto space-y-2 text-sm">
-                            {importer.errors.map((error, index) => (
-                              <div
-                                key={index}
-                                className="rounded-md border border-destructive/20 bg-destructive/5 p-2"
-                              >
-                                <div className="font-medium">
-                                  Row {error.row}: {error.message}
-                                </div>
-                                {error.data && typeof error.data === "object" && (
-                                  <div className="mt-1 text-xs text-muted-foreground">
-                                    Data: {JSON.stringify(error.data, null, 2)}
+                          <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+                            {importer.errors.map((error, index) => {
+                              const formatted = formatImportError(error);
+                              return (
+                                <div
+                                  key={index}
+                                  className="rounded-md border border-destructive/20 bg-destructive/5 p-4"
+                                >
+                                  <div className="font-semibold text-base mb-1">
+                                    Row {formatted.row}: {formatted.title}
                                   </div>
-                                )}
-                              </div>
-                            ))}
+                                  <div className="text-sm text-muted-foreground mb-3">
+                                    {formatted.message}
+                                  </div>
+                                  <div className="mt-3">
+                                    <div className="text-xs font-medium mb-2 text-foreground">
+                                      How to fix:
+                                    </div>
+                                    <ol className="list-decimal list-inside space-y-1.5 text-xs text-muted-foreground">
+                                      {formatted.steps.map((step, stepIndex) => (
+                                        <li key={stepIndex} className="pl-1">
+                                          {step}
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </AccordionContent>
                       </AccordionItem>
