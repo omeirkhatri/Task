@@ -44,7 +44,7 @@ export const ContactListContent = () => {
     selectedIds,
   } = useListContext<Contact>();
   const isSmall = useIsMobile();
-  const { contactGender, leadStages } = useConfigurationContext();
+  const { leadStages } = useConfigurationContext();
   const lastClickedIndexRef = useRef<number | null>(null);
 
   // Fetch all deals to get contact stages and identify clients
@@ -176,14 +176,6 @@ export const ContactListContent = () => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-medium flex items-center gap-2">
-                {contactGender
-                  .filter((g) => g.value === contact.gender)
-                  .map((g) => {
-                    const Icon = g.icon;
-                    return (
-                      <Icon key={g.value} className="w-4 h-4 text-muted-foreground" />
-                    );
-                  })}
                 {`${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || "New Lead"}
               </div>
               <div className="text-sm text-muted-foreground">
