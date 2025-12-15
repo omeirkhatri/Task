@@ -3,7 +3,7 @@ import { Mars, NonBinary, Venus } from "lucide-react";
 export const defaultDarkModeLogo = "./logos/logo_bestdoc_crm_dark.svg";
 export const defaultLightModeLogo = "./logos/logo_bestdoc_crm_light.svg";
 
-export const defaultTitle = "BestDOC CRM";
+export const defaultTitle = "BestDOC Tasks";
 
 export const defaultCompanySectors = [
   "Communication Services",
@@ -58,9 +58,9 @@ export const defaultTaskTypes = [
 ];
 
 export const defaultContactGender = [
-  { value: "male", label: "He/Him", icon: Mars },
-  { value: "female", label: "She/Her", icon: Venus },
-  { value: "nonbinary", label: "They/Them", icon: NonBinary },
+  { value: "male", label: "Male", icon: Mars },
+  { value: "female", label: "Female", icon: Venus },
+  { value: "nonbinary", label: "Non-binary", icon: NonBinary },
 ];
 
 export const defaultServices = [

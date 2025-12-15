@@ -102,9 +102,6 @@ export const ContactAside = ({ link = "edit", deals = [] }: { link?: "edit" | "s
               return (
                 <PersonalInfoRow
                   key={genderOption.value}
-                  icon={
-                    <genderOption.icon className="w-4 h-4 text-muted-foreground" />
-                  }
                   primary={<span>{genderOption.label}</span>}
                 />
               );
@@ -213,12 +210,12 @@ const PersonalInfoRow = ({
   primary,
   showType,
 }: {
-  icon: ReactNode;
+  icon?: ReactNode;
   primary: ReactNode;
   showType?: boolean;
 }) => (
   <div className="flex flex-row items-center gap-2 min-h-6">
-    {icon}
+    {icon && icon}
     <div className="flex flex-wrap gap-x-2 gap-y-0">
       {primary}
       {showType ? (
