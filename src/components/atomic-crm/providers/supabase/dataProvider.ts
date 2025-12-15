@@ -258,101 +258,60 @@ const dataProviderWithCustomMethods = {
       }
     }
     
-    // Handle isClient filter for clients resource - filter contacts that have deals with stage="converted"
-    if (resource === "clients" && params.filter && "isClient" in params.filter) {
-      delete params.filter.isClient;
-      
-      // Fetch all deals with stage="converted"
-      const { data: convertedDeals } = await baseDataProvider.getList("deals", {
-        pagination: { page: 1, perPage: 10000 },
-        sort: { field: "id", order: "ASC" },
-        filter: { stage: "converted" },
-      });
-      
-      // Extract unique lead_ids (contact IDs) from converted deals, falling back to legacy contact_ids array
-      const clientContactIds = Array.from(
-        new Set(
-          convertedDeals
-            ?.flatMap((deal: Deal) => {
-              if (deal.lead_id != null) return [deal.lead_id];
-              if (Array.isArray((deal as any).contact_ids)) {
-                return (deal as any).contact_ids.filter(
-                  (id: Identifier | undefined) =>
-                    id !== undefined && id !== null,
-                );
-              }
-              return [];
-            })
-            .filter((id: Identifier | undefined): id is Identifier => id !== undefined && id !== null),
-        ),
-      );
-      
-      // Filter contacts by those IDs
-      if (clientContactIds.length > 0) {
-        params.filter["id@in"] = `(${clientContactIds.join(",")})`;
-      } else {
-        // No clients found, return empty result by using a non-existent ID
-        params.filter["id@in"] = "(-1)";
+    // Handle client filters (active/archived) based on converted deals
+    if (resource === "clients" && params.filter) {
+      const hasArchivedDeals =
+        "hasArchivedDeals" in params.filter
+          ? params.filter.hasArchivedDeals
+          : undefined;
+      const hasIsClient = "isClient" in params.filter;
+
+      // Clean up handled filters
+      if (hasIsClient) {
+        delete params.filter.isClient;
       }
-    }
-    
-    // Handle hasArchivedDeals filter for clients resource - filter by whether their converted deals are archived
-    if (resource === "clients" && params.filter && "hasArchivedDeals" in params.filter) {
-      const hasArchivedDeals = params.filter.hasArchivedDeals;
-      delete params.filter.hasArchivedDeals;
-      
-      // Fetch all deals with stage="converted"
-      const { data: convertedDeals } = await baseDataProvider.getList("deals", {
-        pagination: { page: 1, perPage: 10000 },
-        sort: { field: "id", order: "ASC" },
-        filter: { stage: "converted" },
-      });
-      
-      if (!convertedDeals || convertedDeals.length === 0) {
-        // No converted deals, return empty result
-        params.filter["id@in"] = "(-1)";
-      } else {
-        // Filter deals by archived status
-        const filteredDeals = convertedDeals.filter((deal: Deal) => {
-          const isArchived = deal.archived_at != null && deal.archived_at !== "";
-          return hasArchivedDeals ? isArchived : !isArchived;
-        });
-        
-        // Extract unique lead_ids (contact IDs) from filtered deals, falling back to legacy contact_ids array
-        const clientContactIds = Array.from(
-          new Set(
-            filteredDeals
-              .flatMap((deal: Deal) => {
-                if (deal.lead_id != null) return [deal.lead_id];
-                if (Array.isArray((deal as any).contact_ids)) {
-                  return (deal as any).contact_ids.filter(
-                    (id: Identifier | undefined) =>
-                      id !== undefined && id !== null,
-                  );
-                }
-                return [];
-              })
-              .filter((id: Identifier | undefined): id is Identifier => id !== undefined && id !== null),
-          ),
-        );
-        
-        // If we already have an id@in filter from isClient, we need to intersect the sets
-        if (params.filter["id@in"]) {
-          const existingIds = params.filter["id@in"]
-            .replace(/[()]/g, "")
-            .split(",")
-            .map((id: string) => parseInt(id.trim()))
-            .filter((id: number) => !isNaN(id));
-          
-          const intersection = existingIds.filter((id: number) => clientContactIds.includes(id));
-          
-          if (intersection.length > 0) {
-            params.filter["id@in"] = `(${intersection.join(",")})`;
-          } else {
-            params.filter["id@in"] = "(-1)";
-          }
+      if ("hasArchivedDeals" in params.filter) {
+        delete params.filter.hasArchivedDeals;
+      }
+
+      // Only run when explicitly filtering clients or archive state
+      if (hasIsClient || typeof hasArchivedDeals === "boolean") {
+        const dealFilter: any = { stage: "converted" };
+
+        // Default client view and explicit "unarchived" both limit to active deals
+        if (hasArchivedDeals === true) {
+          dealFilter["archived_at@not.is"] = null;
         } else {
-          // No existing filter, just use the archived filter result
+          dealFilter["archived_at@is"] = null;
+        }
+
+        const { data: convertedDeals } = await baseDataProvider.getList("deals", {
+          pagination: { page: 1, perPage: 10000 },
+          sort: { field: "id", order: "ASC" },
+          filter: dealFilter,
+        });
+
+        if (!convertedDeals || convertedDeals.length === 0) {
+          params.filter["id@in"] = "(-1)";
+        } else {
+          // Extract unique lead_ids (contact IDs) from converted deals, falling back to legacy contact_ids array
+          const clientContactIds = Array.from(
+            new Set(
+              convertedDeals
+                .flatMap((deal: Deal) => {
+                  if (deal.lead_id != null) return [deal.lead_id];
+                  if (Array.isArray((deal as any).contact_ids)) {
+                    return (deal as any).contact_ids.filter(
+                      (id: Identifier | undefined) =>
+                        id !== undefined && id !== null,
+                    );
+                  }
+                  return [];
+                })
+                .filter((id: Identifier | undefined): id is Identifier => id !== undefined && id !== null),
+            ),
+          );
+
           if (clientContactIds.length > 0) {
             params.filter["id@in"] = `(${clientContactIds.join(",")})`;
           } else {

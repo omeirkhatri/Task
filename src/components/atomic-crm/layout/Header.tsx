@@ -129,8 +129,8 @@ const UsersMenu = () => {
   const { onClose } = useUserMenu() ?? {};
   return (
     <DropdownMenuItem asChild onClick={onClose}>
-      <Link to="/sales" className="flex items-center gap-2">
-        <User /> Users
+      <Link to="/settings" className="flex items-center gap-2">
+        <User /> Users and Settings
       </Link>
     </DropdownMenuItem>
   );

@@ -1,4 +1,3 @@
-import { formatRelative } from "date-fns";
 import { RecordContextProvider, useListContext, useGetList } from "ra-core";
 import { type MouseEvent, useCallback, useMemo, useRef } from "react";
 import { Link } from "react-router";
@@ -13,6 +12,7 @@ import { Status } from "../misc/Status";
 import type { Contact, Deal } from "../types";
 import { TagsList } from "./TagsList";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { formatRelativeOrDate } from "../misc/timezone";
 
 // Helper function to get badge color for lead stage
 const getStageBadgeColor = (stage: string): string => {
@@ -231,7 +231,7 @@ export const ContactListContent = () => {
                   title={contact.last_seen}
                 >
                   {!isSmall && "last activity "}
-                  {formatRelative(contact.last_seen, now)}{" "}
+                  {formatRelativeOrDate(contact.last_seen, new Date(now))}{" "}
                   <Status status={contact.status} />
                 </div>
               </div>

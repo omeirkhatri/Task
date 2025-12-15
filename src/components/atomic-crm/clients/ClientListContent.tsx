@@ -1,4 +1,3 @@
-import { formatRelative } from "date-fns";
 import { RecordContextProvider, useListContext } from "ra-core";
 import { type MouseEvent, useCallback, useRef } from "react";
 import { Link } from "react-router";
@@ -12,6 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { Contact } from "../types";
 import { TagsList } from "../contacts/TagsList";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { formatRelativeOrDate } from "../misc/timezone";
 
 export const ClientListContent = () => {
   const {
@@ -166,7 +166,7 @@ export const ClientListContent = () => {
                   title={client.last_seen}
                 >
                   {!isSmall && "last activity "}
-                  {formatRelative(client.last_seen, now)}
+                  {formatRelativeOrDate(client.last_seen, new Date(now))}
                 </div>
               )}
             </div>

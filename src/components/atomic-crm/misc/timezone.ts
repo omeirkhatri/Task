@@ -263,3 +263,25 @@ export function crmDateTimeStringToISO(value: string | null | undefined) {
   const date = crmDateTimeStringToDate(value);
   return date?.toISOString();
 }
+
+/**
+ * Formats a date as relative time (e.g., "2 days ago") for recent dates,
+ * or as DD/MM/YYYY for older dates (more than 7 days ago).
+ */
+export function formatRelativeOrDate(value: DateInput, baseDate: Date = new Date()) {
+  const date = parseDate(value);
+  if (!date) return "";
+  
+  const diffMs = baseDate.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / DAY_IN_MS);
+  
+  // For dates within the last 7 days, use relative format
+  if (diffDays >= 0 && diffDays <= 7) {
+    if (diffDays === 0) return "today";
+    if (diffDays === 1) return "yesterday";
+    return `${diffDays} days ago`;
+  }
+  
+  // For older dates, use DD/MM/YYYY format
+  return formatCrmDate(date);
+}
