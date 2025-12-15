@@ -93,14 +93,18 @@ export const SettingsPage = () => {
     mutate(values);
   };
 
+  const isAdministrator = data?.administrator === true;
+
   return (
     <div className="max-w-6xl mx-auto mt-8 px-4">
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={isAdministrator ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
           <TabsTrigger value="profile">My Info</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
+          {isAdministrator && (
+            <TabsTrigger value="users">Users</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="profile" className="mt-6">
@@ -117,9 +121,11 @@ export const SettingsPage = () => {
           <ServicesManagementSection />
         </TabsContent>
 
-        <TabsContent value="users" className="mt-6">
-          <UsersManagementSection />
-        </TabsContent>
+        {isAdministrator && (
+          <TabsContent value="users" className="mt-6">
+            <UsersManagementSection />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
