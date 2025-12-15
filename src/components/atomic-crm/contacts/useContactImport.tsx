@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 
 import { createLeadJourneyDealForContact } from "../deals/createLeadJourneyDeal";
 import type { Company, Tag } from "../types";
+import type { ImportError } from "../misc/usePapaParse";
 
 export type ContactImportSchema = {
   // Auto-generated fields (ignored if present in CSV):
@@ -89,7 +90,9 @@ export function useContactImport() {
   );
 
   const processBatch = useCallback(
-    async (batch: ContactImportSchema[]) => {
+    async (batch: ContactImportSchema[], startRowIndex: number): Promise<ImportError[]> => {
+      const errors: ImportError[] = [];
+      
       const [companies, tags] = await Promise.all([
         getCompanies(
           batch
@@ -99,9 +102,10 @@ export function useContactImport() {
         getTags(batch.flatMap((batch) => parseTags(batch.tags))),
       ]);
 
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         batch.map(
-          async (row) => {
+          async (row, batchIndex) => {
+            const rowNumber = startRowIndex + batchIndex;
             const {
               first_name,
               last_name,
@@ -178,8 +182,9 @@ export function useContactImport() {
             }
 
             // Parse services_interested (semicolon-separated)
+            // Convert to string first in case PapaParse converted it to a number
             const parsedServicesInterested = services_interested
-              ? services_interested
+              ? String(services_interested)
                   .split(";")
                   .map((s) => s.trim())
                   .filter(Boolean)
@@ -196,6 +201,11 @@ export function useContactImport() {
 
             // Always use current user's ID for sales_id (ignore any sales_id in CSV)
             const finalSalesId = user?.identity?.id;
+
+            // Validate required fields
+            if (!first_name?.trim() && !last_name?.trim()) {
+              throw new Error("Either first_name or last_name is required");
+            }
 
             // Create the contact first
             const contactResponse = await dataProvider.create("contacts", {
@@ -258,8 +268,20 @@ export function useContactImport() {
         ),
       );
       
-      // All contacts and lead-journey entries have been created
-      return results;
+      // Process results and collect errors
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const rowNumber = startRowIndex + index;
+          const errorMessage = result.reason?.message || result.reason || "Unknown error";
+          errors.push({
+            row: rowNumber,
+            message: String(errorMessage),
+            data: batch[index],
+          });
+        }
+      });
+      
+      return errors;
     },
     [dataProvider, getCompanies, getTags, user?.identity?.id, today],
   );
@@ -313,6 +335,8 @@ const fetchRecordsWithCache = async function <T>(
 
 const parseTags = (tags: string) =>
   tags
-    ?.split(",")
-    ?.map((tag: string) => tag.trim())
-    ?.filter((tag: string) => tag) ?? [];
+    ? String(tags)
+        .split(",")
+        .map((tag: string) => tag.trim())
+        .filter((tag: string) => tag)
+    : [];

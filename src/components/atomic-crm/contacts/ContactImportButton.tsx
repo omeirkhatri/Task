@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, AlertCircle } from "lucide-react";
 import { Form, useRefresh } from "ra-core";
 import { Link } from "react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -12,6 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { FormToolbar } from "@/components/admin/simple-form";
 import { FileInput } from "@/components/admin/file-input";
 import { FileField } from "@/components/admin/file-field";
@@ -147,18 +153,60 @@ export function ContactImportDialog({
 
             {importer.state === "error" && (
               <Alert variant="destructive">
+                <AlertCircle className="h-5 w-5" />
                 <AlertDescription>
-                  Failed to import this file, please make sure your provided a
-                  valid CSV file.
+                  Failed to import this file: {importer.error.message || "Please make sure you provided a valid CSV file."}
                 </AlertDescription>
               </Alert>
             )}
 
-            {importer.state === "complete" && (
+            {(importer.state === "complete" || importer.state === "running") && importer.errorCount > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-5 w-5" />
+                <AlertDescription className="flex flex-col gap-2">
+                  <div>
+                    {importer.state === "complete" ? (
+                      <>Contacts import complete. Imported {importer.importCount} contacts, with <strong>{importer.errorCount} errors</strong>.</>
+                    ) : (
+                      <>Importing... {importer.errorCount} errors so far.</>
+                    )}
+                  </div>
+                  {importer.errors && importer.errors.length > 0 && (
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="errors" className="border-none">
+                        <AccordionTrigger className="py-2 text-sm hover:no-underline">
+                          View error details ({importer.errors.length})
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="max-h-60 overflow-y-auto space-y-2 text-sm">
+                            {importer.errors.map((error, index) => (
+                              <div
+                                key={index}
+                                className="rounded-md border border-destructive/20 bg-destructive/5 p-2"
+                              >
+                                <div className="font-medium">
+                                  Row {error.row}: {error.message}
+                                </div>
+                                {error.data && typeof error.data === "object" && (
+                                  <div className="mt-1 text-xs text-muted-foreground">
+                                    Data: {JSON.stringify(error.data, null, 2)}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {importer.state === "complete" && importer.errorCount === 0 && (
               <Alert>
                 <AlertDescription>
-                  Contacts import complete. Imported {importer.importCount}{" "}
-                  contacts, with {importer.errorCount} errors
+                  Contacts import complete. Successfully imported {importer.importCount} contacts.
                 </AlertDescription>
               </Alert>
             )}

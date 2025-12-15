@@ -1,6 +1,12 @@
 import * as Papa from "papaparse";
 import { useCallback, useMemo, useRef, useState } from "react";
 
+export type ImportError = {
+  row: number;
+  message: string;
+  data?: unknown;
+};
+
 type Import =
   | {
       state: "idle";
@@ -14,6 +20,7 @@ type Import =
       rowCount: number;
       importCount: number;
       errorCount: number;
+      errors: ImportError[];
 
       // The remaining time in milliseconds
       remainingTime: number | null;
@@ -29,7 +36,8 @@ type usePapaParseProps<T> = {
   batchSize?: number;
 
   // processBatch returns the number of imported items
-  processBatch(batch: T[]): Promise<void>;
+  // It can throw errors or return an array of errors for individual rows
+  processBatch(batch: T[], startRowIndex: number): Promise<ImportError[]>;
 };
 
 export function usePapaParse<T>({
@@ -64,33 +72,51 @@ export function usePapaParse<T>({
             return;
           }
 
+          const csvErrors: ImportError[] = results.errors.map((err) => ({
+            row: (err.row ?? 0) + 1, // Convert to 1-based row number
+            message: err.message || "CSV parsing error",
+            data: err,
+          }));
+
           setImporter({
             state: "running",
             rowCount: results.data.length,
-            errorCount: results.errors.length,
+            errorCount: csvErrors.length,
             importCount: 0,
             remainingTime: null,
+            errors: csvErrors,
           });
 
           let totalTime = 0;
+          const importErrors: ImportError[] = [...csvErrors];
+          
           for (let i = 0; i < results.data.length; i += batchSize) {
             if (importIdRef.current !== importId) {
               return;
             }
 
             const batch = results.data.slice(i, i + batchSize);
+            const startRowIndex = i + 1; // 1-based row number
             try {
               const start = Date.now();
-              await processBatch(batch);
+              const batchErrors = await processBatch(batch, startRowIndex);
               totalTime += Date.now() - start;
 
+              // Add batch errors to the list
+              if (batchErrors && batchErrors.length > 0) {
+                importErrors.push(...batchErrors);
+              }
+
               const meanTime = totalTime / (i + batch.length);
+              const successfulCount = batch.length - (batchErrors?.length || 0);
               setImporter((previous) => {
                 if (previous.state === "running") {
-                  const importCount = previous.importCount + batch.length;
+                  const importCount = previous.importCount + successfulCount;
                   return {
                     ...previous,
                     importCount,
+                    errorCount: importErrors.length,
+                    errors: importErrors,
                     remainingTime:
                       meanTime * (results.data.length - importCount),
                   };
@@ -99,11 +125,20 @@ export function usePapaParse<T>({
               });
             } catch (error) {
               console.error("Failed to import batch", error);
+              // If processBatch throws, mark all rows in batch as errors
+              const batchErrors: ImportError[] = batch.map((_, idx) => ({
+                row: startRowIndex + idx,
+                message: error instanceof Error ? error.message : String(error),
+                data: batch[idx],
+              }));
+              importErrors.push(...batchErrors);
+              
               setImporter((previous) =>
                 previous.state === "running"
                   ? {
                       ...previous,
-                      errorCount: previous.errorCount + batch.length,
+                      errorCount: importErrors.length,
+                      errors: importErrors,
                     }
                   : previous,
               );
@@ -116,6 +151,7 @@ export function usePapaParse<T>({
                   ...previous,
                   state: "complete",
                   remainingTime: null,
+                  errors: importErrors,
                 }
               : previous,
           );
