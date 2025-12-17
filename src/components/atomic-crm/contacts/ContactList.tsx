@@ -38,6 +38,7 @@ import { ContactEmpty } from "./ContactEmpty";
 import { ContactImportButton } from "./ContactImportButton";
 import { ContactListContent } from "./ContactListContent";
 import { ContactListFilter } from "./ContactListFilter";
+import { ContactArchivedList } from "./ContactArchivedList";
 import { TopToolbar } from "../layout/TopToolbar";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 import { Switch } from "@/components/ui/switch";
@@ -48,20 +49,23 @@ export const ContactList = () => {
 
   if (!identity) return null;
 
+  const [showArchived, setShowArchived] = React.useState(false);
+
   return (
     <List
       title={false}
-      actions={<ContactListActions />}
+      actions={<ContactListActions onArchivedClick={() => setShowArchived(true)} />}
       perPage={25}
       sort={{ field: "last_seen", order: "DESC" }}
       exporter={exporter}
+      filter={{ "archived_at@is": null }}
     >
-      <ContactListLayout />
+      <ContactListLayout showArchived={showArchived} setShowArchived={setShowArchived} />
     </List>
   );
 };
 
-const ContactListLayout = () => {
+const ContactListLayout = ({ showArchived, setShowArchived }: { showArchived: boolean; setShowArchived: (open: boolean) => void }) => {
   const { data, isPending, filterValues } = useListContext();
   const { identity } = useGetIdentity();
 
@@ -69,7 +73,12 @@ const ContactListLayout = () => {
 
   if (!identity || isPending) return null;
 
-  if (!data?.length && !hasFilters) return <ContactEmpty />;
+  if (!data?.length && !hasFilters) return (
+    <>
+      <ContactEmpty />
+      <ContactArchivedList open={showArchived} onOpenChange={setShowArchived} />
+    </>
+  );
 
   return (
     <div className="flex flex-row gap-8">
@@ -80,11 +89,12 @@ const ContactListLayout = () => {
         </Card>
       </div>
       <BulkActionsToolbar />
+      <ContactArchivedList open={showArchived} onOpenChange={setShowArchived} />
     </div>
   );
 };
 
-const ContactListActions = () => {
+const ContactListActions = ({ onArchivedClick }: { onArchivedClick: () => void }) => {
   const { filterValues = {}, setFilters } = useListContext<Contact>();
   
   // Parse current lead_stage filter
@@ -159,6 +169,9 @@ const ContactListActions = () => {
           Show Clients
         </Label>
       </div>
+      <Button variant="outline" onClick={onArchivedClick}>
+        Archived
+      </Button>
       <CreateButton />
     </TopToolbar>
   );

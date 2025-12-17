@@ -12,32 +12,36 @@ import { List } from "@/components/admin/list";
 import { SortButton } from "@/components/admin/sort-button";
 import { Card } from "@/components/ui/card";
 
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import type { Company, Contact, Sale, Tag } from "../types";
 import { ClientEmpty } from "./ClientEmpty";
 import { ClientListContent } from "./ClientListContent";
 import { ClientListFilter } from "./ClientListFilter";
+import { ClientArchivedList } from "./ClientArchivedList";
 import { TopToolbar } from "../layout/TopToolbar";
 
 export const ClientList = () => {
   const { identity } = useGetIdentity();
+  const [showArchived, setShowArchived] = useState(false);
 
   if (!identity) return null;
 
   return (
     <List
       title={false}
-      actions={<ClientListActions />}
+      actions={<ClientListActions onArchivedClick={() => setShowArchived(true)} />}
       perPage={25}
       sort={{ field: "last_seen", order: "DESC" }}
       exporter={exporter}
-      filter={{ isClient: true }}
+      filter={{ isClient: true, "archived_at@is": null }}
     >
-      <ClientListLayout />
+      <ClientListLayout showArchived={showArchived} setShowArchived={setShowArchived} />
     </List>
   );
 };
 
-const ClientListLayout = () => {
+const ClientListLayout = ({ showArchived, setShowArchived }: { showArchived: boolean; setShowArchived: (open: boolean) => void }) => {
   const { data, isPending, filterValues } = useListContext();
   const { identity } = useGetIdentity();
 
@@ -45,7 +49,12 @@ const ClientListLayout = () => {
 
   if (!identity || isPending) return null;
 
-  if (!data?.length && !hasFilters) return <ClientEmpty />;
+  if (!data?.length && !hasFilters) return (
+    <>
+      <ClientEmpty />
+      <ClientArchivedList open={showArchived} onOpenChange={setShowArchived} />
+    </>
+  );
 
   return (
     <div className="flex flex-row gap-8">
@@ -56,14 +65,18 @@ const ClientListLayout = () => {
         </Card>
       </div>
       <BulkActionsToolbar />
+      <ClientArchivedList open={showArchived} onOpenChange={setShowArchived} />
     </div>
   );
 };
 
-const ClientListActions = () => (
+const ClientListActions = ({ onArchivedClick }: { onArchivedClick: () => void }) => (
   <TopToolbar>
     <SortButton fields={["first_name", "last_name", "last_seen"]} />
     <ExportButton exporter={exporter} />
+    <Button variant="outline" onClick={onArchivedClick}>
+      Archived
+    </Button>
     <CreateButton />
   </TopToolbar>
 );

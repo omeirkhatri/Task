@@ -118,6 +118,7 @@ export type Contact = {
   phone_jsonb: PhoneNumberAndType[];
   nb_tasks?: number;
   company_name?: string;
+  archived_at?: string;
   // B2C fields for leads
   flat_villa_number?: string;
   building_street?: string;

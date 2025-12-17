@@ -51,11 +51,7 @@ export const ContactListContent = () => {
   const { data: allDeals } = useGetList<Deal>("lead-journey", {
     pagination: { page: 1, perPage: 10000 },
     sort: { field: "id", order: "ASC" },
-    filter: { 
-      "archived_at@is": null, 
-      "lead_id@not.is": null,
-      "stage@neq": "deleted"
-    },
+    filter: { "archived_at@is": null, "lead_id@not.is": null },
   }, { enabled: !isPending });
 
   // Create a map of contact ID to deal stage

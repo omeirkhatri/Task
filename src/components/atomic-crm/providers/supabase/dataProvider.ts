@@ -723,8 +723,8 @@ const dataProviderWithCustomMethods = {
     
     record = fetchedRecord;
 
-    // If a contact is deleted, move any related Lead Journey items (deals) to "deleted" stage
-    // instead of archiving them, so they can be viewed and potentially restored.
+    // If a contact is deleted, also archive any related Lead Journey items (deals)
+    // so they stop showing as cards after the FK sets lead_id to NULL.
     if (mappedResource === "contacts" && params?.id != null) {
       const contactId = params.id;
       const now = new Date().toISOString();
@@ -732,19 +732,35 @@ const dataProviderWithCustomMethods = {
         // Primary relation (new schema): deals.lead_id
         await supabase
           .from("deals")
-          .update({ stage: "deleted", updated_at: now })
+          .update({ archived_at: now, updated_at: now })
           .eq("lead_id", contactId);
 
         // Legacy relation (older schema): deals.contact_ids array
         // Best-effort: if column doesn't exist or update is blocked, we ignore.
         await supabase
           .from("deals")
-          .update({ stage: "deleted", updated_at: now })
+          .update({ archived_at: now, updated_at: now })
           // PostgREST array contains operator
           .contains("contact_ids", [contactId] as any);
       } catch {
         // Best effort only; deletion should still proceed.
       }
+    }
+    
+    // For contacts, archive instead of deleting
+    if (mappedResource === "contacts" && record) {
+      const now = new Date().toISOString();
+      const { error: archiveError } = await supabase
+        .from("contacts")
+        .update({ archived_at: now })
+        .eq("id", params.id);
+      
+      if (archiveError) {
+        throw archiveError;
+      }
+      
+      // Return the archived record
+      return { data: { ...record, archived_at: now } };
     }
     
     // Create deletion activity before deleting

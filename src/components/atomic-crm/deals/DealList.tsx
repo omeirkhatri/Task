@@ -47,12 +47,7 @@ const DealList = () => {
       perPage={5000}
       // If a contact is deleted, the FK sets deals.lead_id to NULL (ON DELETE SET NULL).
       // We don't want orphaned deals to keep showing as Lead Journey cards.
-      // Also exclude deleted stage and archived deals (for backward compatibility).
-      filter={{ 
-        "archived_at@is": null, 
-        "lead_id@not.is": null,
-        "stage@neq": "deleted"
-      }}
+      filter={{ "archived_at@is": null, "lead_id@not.is": null }}
       title={false}
       // Lower index = higher priority/top of column (see DealListContent updateDealStage)
       sort={{ field: "index", order: "ASC" }}
