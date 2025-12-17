@@ -115,6 +115,12 @@ export const ContactArchivedList = ({ open, onOpenChange }: ContactArchivedListP
 
 export function getRelativeTimeString(dateString: string): string {
   const date = new Date(dateString);
+  
+  // Validate date is valid
+  if (isNaN(date.getTime())) {
+    return dateString; // Return original string if invalid
+  }
+  
   date.setHours(0, 0, 0, 0);
 
   const today = new Date();
@@ -122,6 +128,15 @@ export function getRelativeTimeString(dateString: string): string {
 
   const diff = date.getTime() - today.getTime();
   const unitDiff = Math.round(diff / (1000 * 60 * 60 * 24));
+
+  // Validate unitDiff is a finite number
+  if (!isFinite(unitDiff)) {
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(date);
+  }
 
   // Check if the date is more than one week old
   if (Math.abs(unitDiff) > 7) {

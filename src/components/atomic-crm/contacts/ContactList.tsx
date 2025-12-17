@@ -46,10 +46,9 @@ import { Label } from "@/components/ui/label";
 
 export const ContactList = () => {
   const { identity } = useGetIdentity();
+  const [showArchived, setShowArchived] = React.useState(false);
 
   if (!identity) return null;
-
-  const [showArchived, setShowArchived] = React.useState(false);
 
   return (
     <List
