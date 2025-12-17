@@ -154,10 +154,13 @@ export const LeadJourneySearchAndFilter = ({
   const { filterValues, setFilters } = useListContext();
 
   const hasActiveFilters = filterValues && Object.keys(filterValues).length > 0 && 
-    Object.keys(filterValues).some(key => key !== "archived_at@is" && key !== "q");
+    Object.keys(filterValues).some(key => key !== "archived_at@is" && key !== "stage@neq" && key !== "q");
 
   const clearAllFilters = () => {
-    const baseFilter = { "archived_at@is": null };
+    const baseFilter = { 
+      "archived_at@is": null,
+      "stage@neq": "deleted"
+    };
     setFilters(baseFilter, {});
   };
 

@@ -81,4 +81,5 @@ export const defaultLeadStages = [
   { value: "qualified", label: "Qualified" },
   { value: "not-qualified", label: "Not Qualified" },
   { value: "converted", label: "Converted" },
+  { value: "deleted", label: "Deleted" },
 ];

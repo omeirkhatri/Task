@@ -106,3 +106,4 @@ CREATE INDEX IF NOT EXISTS "quotes_status_idx" ON "public"."quotes" ("status");
 
 
 
+

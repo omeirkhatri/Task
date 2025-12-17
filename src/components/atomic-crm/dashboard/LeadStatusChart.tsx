@@ -15,6 +15,7 @@ const STAGE_COLORS: Record<string, string> = {
   qualified: "#06b6d4", // Cyan 500
   "not-qualified": "#94a3b8", // Slate 400
   converted: "#22c55e", // Green 500
+  deleted: "#ef4444",   // Red 500
 };
 
 export const LeadStatusChart = memo(() => {
@@ -26,6 +27,13 @@ export const LeadStatusChart = memo(() => {
     sort: {
       field: "created_at",
       order: "ASC",
+    },
+    // Filter out archived leads, orphaned deals (deals without a lead_id), and deleted stage
+    // This matches the filter used in DealList to ensure consistency
+    filter: { 
+      "archived_at@is": null, 
+      "lead_id@not.is": null,
+      "stage@neq": "deleted"
     },
   });
 

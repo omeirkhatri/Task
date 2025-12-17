@@ -19,3 +19,4 @@ create index if not exists "dealNotes_tagged_user_ids_idx" on "public"."dealNote
 
 
 
+

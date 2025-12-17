@@ -605,6 +605,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/contacts/formatImportError.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/contacts/exportToVCard.ts",
           "type": "registry:component"
         },

@@ -182,3 +182,4 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."services" TO "service_ro
 
 
 
+

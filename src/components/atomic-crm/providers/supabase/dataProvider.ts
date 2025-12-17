@@ -723,8 +723,8 @@ const dataProviderWithCustomMethods = {
     
     record = fetchedRecord;
 
-    // If a contact is deleted, also archive any related Lead Journey items (deals)
-    // so they stop showing as cards after the FK sets lead_id to NULL.
+    // If a contact is deleted, move any related Lead Journey items (deals) to "deleted" stage
+    // instead of archiving them, so they can be viewed and potentially restored.
     if (mappedResource === "contacts" && params?.id != null) {
       const contactId = params.id;
       const now = new Date().toISOString();
@@ -732,14 +732,14 @@ const dataProviderWithCustomMethods = {
         // Primary relation (new schema): deals.lead_id
         await supabase
           .from("deals")
-          .update({ archived_at: now, updated_at: now })
+          .update({ stage: "deleted", updated_at: now })
           .eq("lead_id", contactId);
 
         // Legacy relation (older schema): deals.contact_ids array
         // Best-effort: if column doesn't exist or update is blocked, we ignore.
         await supabase
           .from("deals")
-          .update({ archived_at: now, updated_at: now })
+          .update({ stage: "deleted", updated_at: now })
           // PostgREST array contains operator
           .contains("contact_ids", [contactId] as any);
       } catch {

@@ -15,3 +15,4 @@ CREATE INDEX IF NOT EXISTS "activity_log_company_id_idx" ON "public"."activity_l
 
 
 
+

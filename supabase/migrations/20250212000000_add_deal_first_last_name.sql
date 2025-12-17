@@ -29,3 +29,4 @@ WHERE d.lead_id = c.id
   AND (d.first_name IS NULL OR d.last_name IS NULL);
 
 
+
