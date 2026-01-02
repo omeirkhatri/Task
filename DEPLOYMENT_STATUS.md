@@ -13,57 +13,55 @@
    - ✅ `docs/ENVIRONMENT_SETUP.md` - Detailed environment configuration
    - ✅ `scripts/setup-production-env.sh` - Helper script for environment setup
 
-3. **Supabase Projects Found**
-   - Project 1: "Atomic CRM" (ID: `lwpxzgkjuevjlilgvdac`)
-   - Project 2: "BestDOC Task manager" (ID: `vzwcxhydyqdudngxyres`)
+3. **Supabase Project Configured**
+   - ✅ Using "BestDOC Task Manager" (ID: `vzwcxhydyqdudngxyres`)
+   - ✅ Project URL: `https://vzwcxhydyqdudngxyres.supabase.co`
+   - ✅ Created `.env.production.local` file
 
 ## 📋 Next Steps (To Complete Deployment)
 
-### Step 1: Choose and Configure Supabase Project
+### Step 1: Update Production Environment File with Anon Key
 
-You have two Supabase projects. Choose which one to use for production:
-
-**Option A: Use "BestDOC Task manager" (vzwcxhydyqdudngxyres)**
+✅ `.env.production.local` has been created with:
 - Project URL: `https://vzwcxhydyqdudngxyres.supabase.co`
-- Get API key from: https://supabase.com/dashboard/project/vzwcxhydyqdudngxyres/settings/api
 
-**Option B: Use "Atomic CRM" (lwpxzgkjuevjlilgvdac)**
-- Project URL: `https://lwpxzgkjuevjlilgvdac.supabase.co`
-- Get API key from: https://supabase.com/dashboard/project/lwpxzgkjuevjlilgvdac/settings/api
+⚠️ **Action Required:** You need to add your **anon/public key** to `.env.production.local`:
 
-### Step 2: Create Production Environment File
-
-Run the setup script:
-```bash
-./scripts/setup-production-env.sh
-```
-
-Or manually create `.env.production.local`:
-```bash
-VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-VITE_SUPABASE_ANON_KEY=your_anon_key_here
-VITE_IS_DEMO=false
-```
-
-### Step 3: Link and Deploy to Supabase
-
-1. **Link the project:**
+1. Go to: https://supabase.com/dashboard/project/vzwcxhydyqdudngxyres/settings/api
+2. Find the **anon/public key** (starts with `eyJ...`)
+3. Update `.env.production.local`:
    ```bash
-   npx supabase link --project-ref YOUR_PROJECT_REF
+   VITE_SUPABASE_URL=https://vzwcxhydyqdudngxyres.supabase.co
+   VITE_SUPABASE_ANON_KEY=your_anon_key_here
+   VITE_IS_DEMO=false
+   ```
+
+**Note:** The secret key you provided is for server-side operations. The frontend needs the **anon/public key**.
+
+### Step 2: Link and Deploy to Supabase
+
+1. **Login to Supabase CLI (if not already):**
+   ```bash
+   npx supabase login
+   ```
+
+2. **Link the project:**
+   ```bash
+   npx supabase link --project-ref vzwcxhydyqdudngxyres
    ```
    (You'll need your database password - find it in Supabase Dashboard → Settings → Database)
 
-2. **Deploy database:**
+3. **Deploy database:**
    ```bash
    npx supabase db push
    ```
 
-3. **Deploy functions:**
+4. **Deploy functions:**
    ```bash
    npx supabase functions deploy
    ```
 
-### Step 4: Deploy to Vercel
+### Step 3: Deploy to Vercel
 
 1. **Go to Vercel:**
    - Visit: https://vercel.com/new
@@ -83,7 +81,7 @@ VITE_IS_DEMO=false
    - Wait for build to complete
    - Copy your Vercel URL (e.g., `https://task-xxxxx.vercel.app`)
 
-### Step 5: Configure Supabase Auth
+### Step 4: Configure Supabase Auth
 
 1. Go to Supabase Dashboard → **Authentication** → **URL Configuration**
 2. Add to **Redirect URLs**:
@@ -101,7 +99,7 @@ VITE_IS_DEMO=false
 - **Use Case:** Local development and testing
 
 ### Production (Supabase Cloud)
-- **URL:** `https://YOUR_PROJECT_REF.supabase.co`
+- **URL:** `https://vzwcxhydyqdudngxyres.supabase.co`
 - **Config:** `.env.production.local` (local) or Vercel env vars (deployment)
 - **Use Case:** Production deployments and cloud testing
 
