@@ -15,6 +15,7 @@ import { APPOINTMENT_STATUSES } from "./types";
 import { useAppointmentTypes } from "./useAppointmentTypes";
 import { formatCrmTime, crmDateYmdInputString, extractCrmTime } from "../misc/timezone";
 import { cn } from "@/lib/utils";
+import { CustomMultiSelect, type MultiSelectOption } from "./CustomMultiSelect";
 
 type AppointmentFormProps = {
   appointment?: Appointment | null;
@@ -29,7 +30,7 @@ type AppointmentFormData = {
   start_time: string;
   end_time: string;
   duration_minutes: number;
-  appointment_type: string;
+  appointment_type: string[]; // Changed to array for multiple types
   status: string;
   notes?: string;
   mini_notes?: string;
@@ -37,7 +38,7 @@ type AppointmentFormData = {
   pickup_instructions?: string;
   primary_staff_id?: string;
   driver_id?: string;
-  staff_ids?: string[];
+  staff_ids?: string[]; // Already an array for multiple staff
   // Recurrence fields
   is_recurring?: boolean;
   recurrence_pattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
@@ -65,6 +66,22 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
     pagination: { page: 1, perPage: 1000 },
   });
   const appointmentTypes = useAppointmentTypes();
+  
+  // Helper to convert appointment type to service IDs for form
+  const convertAppointmentTypeToServiceIds = React.useCallback((appointmentType: string | string[] | undefined): string[] => {
+    if (!appointmentType) return [];
+    const types = Array.isArray(appointmentType) ? appointmentType : [appointmentType];
+    
+    // If it's already in service_ format, return as is
+    if (types.some(t => typeof t === "string" && t.startsWith("service_"))) {
+      return types.filter(t => typeof t === "string" && t.startsWith("service_")) as string[];
+    }
+    
+    // Otherwise, find services that match this appointment type
+    return appointmentTypes
+      .filter(type => type.appointmentType === types[0] || types.includes(type.appointmentType || ""))
+      .map(type => type.value);
+  }, [appointmentTypes]);
 
   const {
     register,
@@ -83,7 +100,7 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
           start_time: extractCrmTime(appointment.start_time) || "",
           end_time: extractCrmTime(appointment.end_time) || "",
           duration_minutes: appointment.duration_minutes,
-          appointment_type: appointment.appointment_type,
+          appointment_type: convertAppointmentTypeToServiceIds(appointment.appointment_type),
           status: appointment.status,
           notes: appointment.notes || "",
           mini_notes: appointment.mini_notes || "",
@@ -117,9 +134,10 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
                 start_time: "",
                 end_time: "",
                 patient_id: "",
-                appointment_type: "",
+                appointment_type: [],
                 primary_staff_id: "",
                 driver_id: "",
+                staff_ids: [],
                 is_recurring: false,
                 recurrence_pattern: "daily",
                 recurrence_interval: 1,
@@ -147,8 +165,10 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
             end_time: endTimeStr || "",
             duration_minutes: durationMinutes,
             status: "scheduled",
+            appointment_type: [],
             primary_staff_id: "",
             driver_id: "",
+            staff_ids: [],
           };
           }
           return {
@@ -158,9 +178,10 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
             start_time: "",
             end_time: "",
             patient_id: "",
-            appointment_type: "",
+            appointment_type: [],
             primary_staff_id: "",
             driver_id: "",
+            staff_ids: [],
             is_recurring: false,
             recurrence_pattern: "daily",
             recurrence_interval: 1,
@@ -358,8 +379,8 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
         )}
       </div>
 
-      {/* Date and Time - Compact Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Row 2: Date, Start, End, Duration */}
+      <div className="grid grid-cols-4 gap-3">
         <div>
           <Label htmlFor="appointment_date" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
             Date <span className="text-red-500">*</span>
@@ -419,29 +440,42 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
             <p className="text-xs text-red-600 dark:text-red-400 mt-1">Required</p>
           )}
         </div>
+        <div>
+          <Label htmlFor="duration_minutes" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+            Duration <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            type="number"
+            {...register("duration_minutes", { required: true, min: 15 })}
+            className="h-9 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
+            placeholder="60"
+            step="15"
+            min="15"
+          />
+          {errors.duration_minutes && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Min 15 min</p>
+          )}
+        </div>
       </div>
 
-      {/* Type, Status, Duration - Compact Grid */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Row 3: Type, Status */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="appointment_type" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
             Type <span className="text-red-500">*</span>
           </Label>
-          <Select
-            value={watch("appointment_type") || ""}
-            onValueChange={(value) => setValue("appointment_type", value)}
-          >
-            <SelectTrigger className="h-9 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm">
-              <SelectValue placeholder="Select" />
-            </SelectTrigger>
-            <SelectContent>
-              {appointmentTypes.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CustomMultiSelect
+            options={appointmentTypes.map((type) => ({
+              value: type.value,
+              label: type.label,
+              color: type.color,
+              serviceId: type.serviceId,
+            }))}
+            selected={watch("appointment_type") || []}
+            onChange={(selected) => setValue("appointment_type", selected)}
+            placeholder="Select types"
+            className="h-9"
+          />
           {errors.appointment_type && (
             <p className="text-xs text-red-600 dark:text-red-400 mt-1">Required</p>
           )}
@@ -466,45 +500,31 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label htmlFor="duration_minutes" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-            Duration <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            type="number"
-            {...register("duration_minutes", { required: true, min: 15 })}
-            className="h-9 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
-            placeholder="60"
-            step="15"
-            min="15"
-          />
-          {errors.duration_minutes && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Min 15 min</p>
-          )}
-        </div>
       </div>
 
-      {/* Staff - Compact Grid */}
+      {/* Row 4: Staff, Driver */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label htmlFor="primary_staff_id" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-            Primary Staff
+          <Label htmlFor="staff_ids" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+            Staff
           </Label>
-          <Select
-            value={watch("primary_staff_id") || ""}
-            onValueChange={(value) => setValue("primary_staff_id", value || "")}
-          >
-            <SelectTrigger className="h-9 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm">
-              <SelectValue placeholder="Select staff" />
-            </SelectTrigger>
-            <SelectContent>
-              {staff?.map((s) => (
-                <SelectItem key={s.id} value={s.id.toString()}>
-                  {s.first_name} {s.last_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CustomMultiSelect
+            options={staff?.filter((s) => {
+              // Filter out Management and Driver staff types
+              const staffTypeLower = s.staff_type?.toLowerCase() || "";
+              return s.first_name && 
+                     s.last_name && 
+                     !staffTypeLower.includes("management") && 
+                     !staffTypeLower.includes("driver");
+            }).map((s) => ({
+              value: s.id.toString(),
+              label: `${s.first_name.trim()} ${s.last_name.trim()}`.trim(),
+            })) || []}
+            selected={watch("staff_ids") || []}
+            onChange={(selected) => setValue("staff_ids", selected)}
+            placeholder="Select staff"
+            className="h-9"
+          />
         </div>
         <div>
           <Label htmlFor="driver_id" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">

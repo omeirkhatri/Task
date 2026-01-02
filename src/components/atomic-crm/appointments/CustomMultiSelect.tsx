@@ -8,6 +8,7 @@ export type MultiSelectOption = {
   label: string;
   color?: string;
   icon?: React.ReactNode;
+  serviceId?: string | number; // Optional service ID for unique identification
 };
 
 type CustomMultiSelectProps = {
@@ -92,9 +93,9 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {visibleIndicators.length > 0 && (
             <div className="flex items-center gap-1 flex-shrink-0">
-              {visibleIndicators.map((opt) => (
+              {visibleIndicators.map((opt, idx) => (
                 <div
-                  key={opt.value}
+                  key={opt.serviceId !== undefined ? `${opt.value}-${opt.serviceId}` : `${opt.value}-${idx}`}
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: opt.color || "#6b7280" }}
                 />
@@ -137,11 +138,15 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
             <span className="text-slate-700 dark:text-slate-200 font-medium">Select All</span>
           </button>
           <div className="max-h-60 overflow-y-auto">
-            {(options || []).map((option) => {
+            {(options || []).map((option, index) => {
               const isSelected = selected.includes(option.value);
+              // Use serviceId if available for unique key, otherwise use value + index
+              const uniqueKey = option.serviceId !== undefined 
+                ? `${option.value}-${option.serviceId}` 
+                : `${option.value}-${index}`;
               return (
                 <button
-                  key={option.value}
+                  key={uniqueKey}
                   type="button"
                   onClick={() => handleToggle(option.value)}
                   className={cn(

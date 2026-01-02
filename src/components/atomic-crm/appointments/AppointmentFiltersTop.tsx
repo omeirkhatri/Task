@@ -66,6 +66,7 @@ export const AppointmentFiltersTop: React.FC<AppointmentFiltersTopProps> = ({
       value: type.value,
       label: type.label,
       color: type.color,
+      serviceId: type.serviceId,
     }));
   }, [appointmentTypes]);
 

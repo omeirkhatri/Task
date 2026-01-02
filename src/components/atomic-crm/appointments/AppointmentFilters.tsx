@@ -66,6 +66,7 @@ export const AppointmentFiltersSidebar: React.FC<AppointmentFiltersProps> = ({
       value: type.value,
       label: type.label,
       color: type.color,
+      serviceId: type.serviceId,
     }));
   }, [appointmentTypes]);
 

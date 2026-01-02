@@ -24,6 +24,7 @@ import { getContactAvatar } from "../commons/getContactAvatar";
 import { mergeContacts } from "../commons/mergeContacts";
 import { getIsInitialized } from "./authProvider";
 import { supabase } from "./supabase";
+import { logger } from "@/lib/logger";
 
 if (import.meta.env.VITE_SUPABASE_URL === undefined) {
   throw new Error("Please set the VITE_SUPABASE_URL environment variable");
@@ -39,7 +40,7 @@ const baseDataProvider = supabaseDataProvider({
   sortOrder: "asc,desc.nullslast" as any,
 });
 
-const processCompanyLogo = async (params: any) => {
+const processCompanyLogo = async (params: CreateParams<Company> | UpdateParams<Company>): Promise<CreateParams<Company> | UpdateParams<Company>> => {
   let logo = params.data.logo;
 
   if (typeof logo !== "object" || logo === null || !logo.src) {
@@ -629,18 +630,14 @@ const dataProviderWithCustomMethods = {
         };
         
         // Generate all appointment instances
-        console.log("Generating recurring appointments with config:", appointmentData.recurrence_config);
-        console.log("Base appointment:", baseAppointment);
         const generatedAppointments = generateRecurringAppointments(
           baseAppointment,
           appointmentData.recurrence_config
         );
-        console.log(`Generated ${generatedAppointments.length} appointments`);
-        console.log("First few appointments:", generatedAppointments.slice(0, 10).map(a => ({
-          date: a.appointment_date,
-          start: a.start_time,
-          sequence: a.recurrence_sequence
-        })));
+        logger.debug(`Generated ${generatedAppointments.length} recurring appointments`, {
+          config: appointmentData.recurrence_config,
+          count: generatedAppointments.length,
+        });
         
         // Create parent appointment (sequence 0) with recurrence_config
         const parentData = {
@@ -671,7 +668,7 @@ const dataProviderWithCustomMethods = {
                 },
               });
             } catch (staffError) {
-              console.warn("Error creating staff assignment for parent:", staffError);
+              logger.warn("Error creating staff assignment for parent", { error: staffError });
             }
           }
         }
@@ -692,7 +689,7 @@ const dataProviderWithCustomMethods = {
             date: new Date().toISOString(),
           });
         } catch (activityError) {
-          console.warn("Error logging parent appointment activity:", activityError);
+          logger.warn("Error logging parent appointment activity", { error: activityError });
         }
         
         // Create child appointments (sequence 1+)
@@ -727,7 +724,7 @@ const dataProviderWithCustomMethods = {
                     },
                   });
                 } catch (staffError) {
-                  console.warn("Error creating staff assignment for child:", staffError);
+                  logger.warn("Error creating staff assignment for child", { error: staffError });
                 }
               }
             }
@@ -748,10 +745,10 @@ const dataProviderWithCustomMethods = {
                 date: new Date().toISOString(),
               });
             } catch (activityError) {
-              console.warn("Error logging child appointment activity:", activityError);
+              logger.warn("Error logging child appointment activity", { error: activityError });
             }
           } catch (childError) {
-            console.error(`Error creating child appointment ${i}:`, childError);
+            logger.error(`Error creating child appointment ${i}`, childError, { context: "dataProvider" });
             // Continue creating other children even if one fails
           }
         }
@@ -784,7 +781,7 @@ const dataProviderWithCustomMethods = {
                 },
               });
             } catch (staffError) {
-              console.warn("Error creating staff assignment:", staffError);
+              logger.warn("Error creating staff assignment", { error: staffError });
             }
           }
         }
@@ -805,7 +802,7 @@ const dataProviderWithCustomMethods = {
             date: new Date().toISOString(),
           });
         } catch (activityError) {
-          console.warn("Error logging appointment activity:", activityError);
+          logger.warn("Error logging appointment activity", { error: activityError });
         }
         
         return result;
@@ -814,7 +811,7 @@ const dataProviderWithCustomMethods = {
     
     return baseDataProvider.create(mappedResource, params);
   },
-  async update(resource: string, params: any) {
+  async update(resource: string, params: UpdateParams<RaRecord>) {
     // For updates, use the base table instead of the view
     // Views cannot be updated, so we need to update the actual table
     let mappedResource = mapResourceName(resource);
@@ -838,7 +835,7 @@ const dataProviderWithCustomMethods = {
         // Check if stage is changing
         if ("stage" in params.data && previousDeal.stage !== params.data.stage) {
           try {
-            const activityData: any = {
+            const activityData: Record<string, unknown> = {
               type: "deal.statusChanged",
               deal_id: params.id,
               sales_id: previousDeal.sales_id || params.data.sales_id || null,
@@ -864,11 +861,11 @@ const dataProviderWithCustomMethods = {
                 .insert(activityData);
               
               if (fallbackError) {
-                console.warn("Failed to log status change to activity_log. Please run migration 20250208000000_add_status_change_tracking.sql:", fallbackError);
+                logger.warn("Failed to log status change to activity_log. Please run migration 20250208000000_add_status_change_tracking.sql", { error: fallbackError });
               }
             }
           } catch (error) {
-            console.warn("Error logging status change:", error);
+            logger.warn("Error logging status change", { error });
           }
         }
         
@@ -880,7 +877,7 @@ const dataProviderWithCustomMethods = {
           // Only log if the archive status is actually changing
           if (wasArchived !== willBeArchived) {
             try {
-              const activityData: any = {
+              const activityData: Record<string, unknown> = {
                 type: willBeArchived ? "deal.archived" : "deal.unarchived",
                 deal_id: params.id,
                 sales_id: previousDeal.sales_id || params.data.sales_id || null,
@@ -904,11 +901,11 @@ const dataProviderWithCustomMethods = {
                   .insert(activityData);
                 
                 if (fallbackError) {
-                  console.warn("Failed to log archive/unarchive to activity_log:", fallbackError);
+                  logger.warn("Failed to log archive/unarchive to activity_log", { error: fallbackError });
                 }
               }
             } catch (error) {
-              console.warn("Error logging archive/unarchive:", error);
+              logger.warn("Error logging archive/unarchive", { error });
             }
           }
         }
@@ -917,7 +914,7 @@ const dataProviderWithCustomMethods = {
     
     return baseDataProvider.update(mappedResource, params);
   },
-  async delete(resource: string, params: any) {
+  async delete(resource: string, params: { id: Identifier; meta?: { deleteFutureOnly?: boolean } }) {
     // For deletes, use the base table instead of the view
     let mappedResource = mapResourceName(resource);
     if (mappedResource === "contacts_summary") {
@@ -929,7 +926,7 @@ const dataProviderWithCustomMethods = {
     
     // Try to fetch the record first (using maybeSingle to avoid 406 if not found)
     // If fetch fails, we'll still try to delete
-    let record: any = null;
+    let record: Record<string, unknown> | null = null;
     const { data: fetchedRecord } = await supabase
       .from(mappedResource)
       .select("*")
@@ -991,7 +988,7 @@ const dataProviderWithCustomMethods = {
                 date: new Date().toISOString(),
               });
             } catch (activityError) {
-              console.warn("Error logging appointment deletion activity:", activityError);
+              logger.warn("Error logging appointment deletion activity", { error: activityError });
             }
             
             // Delete the appointment
@@ -1000,7 +997,7 @@ const dataProviderWithCustomMethods = {
               .delete()
               .eq("id", apt.id);
           } catch (error) {
-            console.error(`Error deleting appointment ${apt.id}:`, error);
+            logger.error(`Error deleting appointment ${apt.id}`, error, { context: "dataProvider" });
             // Continue deleting other appointments even if one fails
           }
         }
@@ -1054,7 +1051,7 @@ const dataProviderWithCustomMethods = {
     
     // Create deletion activity before deleting
     if (record) {
-      const activityData: any = {
+      const activityData: Record<string, unknown> = {
         date: new Date().toISOString(),
         sales_id: record.sales_id || null,
       };
@@ -1147,7 +1144,7 @@ const dataProviderWithCustomMethods = {
     });
 
     if (!response.data?.user || response.error) {
-      console.error("signUp.error", response.error);
+      logger.error("signUp.error", response.error, { context: "dataProvider" });
       throw new Error("Failed to create account");
     }
 
@@ -1167,7 +1164,7 @@ const dataProviderWithCustomMethods = {
     });
 
     if (!data || error) {
-      console.error("salesCreate.error", error);
+      logger.error("salesCreate.error", error, { context: "dataProvider" });
       throw new Error("Failed to create account manager");
     }
 
@@ -1197,7 +1194,7 @@ const dataProviderWithCustomMethods = {
     );
 
     if (!sale || error) {
-      console.error("salesCreate.error", error);
+      logger.error("salesUpdate.error", error, { context: "dataProvider" });
       throw new Error("Failed to update account manager");
     }
 
@@ -1213,7 +1210,7 @@ const dataProviderWithCustomMethods = {
       });
 
     if (!passwordUpdated || error) {
-      console.error("passwordUpdate.error", error);
+      logger.error("passwordUpdate.error", error, { context: "dataProvider" });
       throw new Error("Failed to update password");
     }
 
@@ -1222,7 +1219,7 @@ const dataProviderWithCustomMethods = {
   async unarchiveDeal(deal: Deal) {
     // Log unarchive action before processing
     try {
-      const activityData: any = {
+      const activityData: Record<string, unknown> = {
         type: "deal.unarchived",
         deal_id: deal.id,
         sales_id: deal.sales_id || null,
@@ -1246,11 +1243,11 @@ const dataProviderWithCustomMethods = {
           .insert(activityData);
         
         if (fallbackError) {
-          console.warn("Failed to log unarchive to activity_log:", fallbackError);
+          logger.warn("Failed to log unarchive to activity_log", { error: fallbackError });
         }
       }
     } catch (error) {
-      console.warn("Error logging unarchive:", error);
+      logger.warn("Error logging unarchive", { error });
     }
     
     // get all deals where stage is the same as the deal to unarchive
@@ -1473,7 +1470,7 @@ const uploadToBucket = async (fi: RAFile) => {
     .upload(filePath, dataContent);
 
   if (uploadError) {
-    console.error("uploadError", uploadError);
+    logger.error("uploadError", uploadError, { context: "dataProvider" });
     throw new Error("Failed to upload attachment");
   }
 

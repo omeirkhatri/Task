@@ -25,6 +25,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
   onEdit,
   onDelete,
 }) => {
+  // All hooks must be called before any early returns
   const { data: patients } = useGetList<Contact>("clients", {
     pagination: { page: 1, perPage: 1000 },
   });
@@ -33,12 +34,47 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
   });
   const appointmentTypes = useAppointmentTypes();
 
+  // Get all assigned staff from staff_ids array
+  const assignedStaff = React.useMemo(() => {
+    if (!staff || !appointment?.staff_ids || appointment.staff_ids.length === 0) return [];
+    return appointment.staff_ids
+      .map((staffId) => staff.find((s) => s.id === staffId))
+      .filter((s): s is Staff => s !== undefined);
+  }, [staff, appointment?.staff_ids]);
+  
+  // Find all appointment types - the database stores one type, but we should show all services that match
+  // Since multiple services can map to the same appointment_type, find all matching services
+  const appointmentTypesList = React.useMemo(() => {
+    if (!appointment?.appointment_type) return [];
+    
+    // The database stores the mapped appointment_type (e.g., "doctor_on_call")
+    // Find all services that map to this appointment_type
+    return appointmentTypes.filter((t) => t.appointmentType === appointment.appointment_type);
+  }, [appointmentTypes, appointment?.appointment_type]);
+  
+  // For backward compatibility, also try to find by direct value match
+  const appointmentType = React.useMemo(() => {
+    if (!appointment?.appointment_type) return undefined;
+    // First try to find by appointment_type directly (for old data)
+    let found = appointmentTypes.find((t) => t.appointmentType === appointment.appointment_type);
+    if (!found) {
+      // Try to find by value (for new service ID format)
+      found = appointmentTypes.find((t) => t.value === appointment.appointment_type);
+    }
+    // If still not found and appointment_type looks like a service ID, try to match
+    if (!found && typeof appointment.appointment_type === "string" && appointment.appointment_type.startsWith("service_")) {
+      const serviceId = appointment.appointment_type.replace("service_", "");
+      found = appointmentTypes.find((t) => t.serviceId?.toString() === serviceId);
+    }
+    return found || appointmentTypesList[0]; // Fallback to first matching type
+  }, [appointmentTypes, appointment?.appointment_type, appointmentTypesList]);
+
+  // Early return after all hooks
   if (!appointment) return null;
 
   const patient = patients?.find((p) => p.id === appointment.patient_id);
   const primaryStaff = staff?.find((s) => s.id === appointment.primary_staff_id);
   const driver = staff?.find((s) => s.id === appointment.driver_id);
-  const appointmentType = appointmentTypes.find((t) => t.value === appointment.appointment_type);
   const status = APPOINTMENT_STATUSES.find((s) => s.value === appointment.status);
 
   // Parse times using the timezone utility to ensure correct Dubai timezone display
@@ -77,9 +113,24 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Appointment Details</h2>
-              {appointmentType && (
+              {appointmentTypesList.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {appointmentTypesList.map((type) => (
+                    <Badge
+                      key={type.value}
+                      style={{
+                        backgroundColor: type.color + "20",
+                        color: type.color,
+                      }}
+                      className="text-xs"
+                    >
+                      {type.label}
+                    </Badge>
+                  ))}
+                </div>
+              ) : appointmentType ? (
                 <p className="text-gray-600 mt-1">{appointmentType.label}</p>
-              )}
+              ) : null}
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="w-5 h-5" />
@@ -175,7 +226,21 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
               </div>
               <div>
                 <p className="text-sm text-gray-600">Type</p>
-                {appointmentType && (
+                {appointmentTypesList.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {appointmentTypesList.map((type) => (
+                      <Badge
+                        key={type.value}
+                        style={{
+                          backgroundColor: type.color + "20",
+                          color: type.color,
+                        }}
+                      >
+                        {type.label}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : appointmentType ? (
                   <Badge
                     style={{
                       backgroundColor: appointmentType.color + "20",
@@ -184,6 +249,8 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                   >
                     {appointmentType.label}
                   </Badge>
+                ) : (
+                  <span className="text-sm text-gray-500">N/A</span>
                 )}
               </div>
             </div>
@@ -209,6 +276,29 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                   </div>
                 </div>
               )}
+              {assignedStaff.length > 0 && (
+                <>
+                  {assignedStaff.map((assignedStaffMember) => {
+                    // Skip if this staff member is already shown as primary or driver
+                    if (assignedStaffMember.id === appointment.primary_staff_id || assignedStaffMember.id === appointment.driver_id) {
+                      return null;
+                    }
+                    return (
+                      <div key={assignedStaffMember.id} className="p-3 bg-white rounded-lg border">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-medium">{assignedStaffMember.first_name} {assignedStaffMember.last_name}</p>
+                          <Badge className="bg-gray-100 text-gray-700">Staff</Badge>
+                        </div>
+                        <p className="text-sm text-gray-600">{assignedStaffMember.staff_type} {assignedStaffMember.specialization && `- ${assignedStaffMember.specialization}`}</p>
+                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                          <Phone className="w-4 h-4" />
+                          <span>{assignedStaffMember.phone}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
               {driver && (
                 <div className="p-3 bg-white rounded-lg border">
                   <div className="flex items-center justify-between mb-2">
@@ -224,6 +314,9 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                     <span>{driver.phone}</span>
                   </div>
                 </div>
+              )}
+              {!primaryStaff && assignedStaff.length === 0 && !driver && (
+                <p className="text-sm text-gray-500 italic">No staff assigned</p>
               )}
             </div>
           </div>

@@ -52,7 +52,7 @@ const useFormField = () => {
   );
 };
 
-function FormField({ className, id, name, ...props }: FormItemProps) {
+function FormField({ className, id, name, fullWidth, ...props }: FormItemProps) {
   const contextValue: FormItemContextValue = useMemo(
     () => ({
       id,
@@ -65,7 +65,7 @@ function FormField({ className, id, name, ...props }: FormItemProps) {
     <FormItemContext.Provider value={contextValue}>
       <div
         data-slot="form-item"
-        className={cn("grid gap-2", className)}
+        className={cn("grid gap-2", fullWidth && "w-full", className)}
         role="group"
         {...props}
       />
@@ -76,6 +76,7 @@ function FormField({ className, id, name, ...props }: FormItemProps) {
 type FormItemProps = Omit<React.ComponentProps<"div">, "id"> & {
   id: string;
   name: string;
+  fullWidth?: boolean;
 };
 
 function FormLabel({

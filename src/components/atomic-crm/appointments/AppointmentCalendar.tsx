@@ -198,7 +198,7 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
   const isNavigatingRef = React.useRef(false);
   
   // Handle datesSet callback to update visible date range
-  const handleDatesSet = useCallback((dateInfo: { start: Date; end: Date; startStr: string; endStr: string; timeZone: string; view: any }) => {
+  const handleDatesSet = useCallback((dateInfo: { start: Date; end: Date; startStr: string; endStr: string; timeZone: string; view: { type: string } }) => {
     // Convert FullCalendar dates back to CRM dates
     const crmStart = convertFullCalendarDateToCrmDate(dateInfo.start);
     const crmEnd = convertFullCalendarDateToCrmDate(dateInfo.end);

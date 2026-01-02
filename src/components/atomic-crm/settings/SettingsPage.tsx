@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleX, Copy, Pencil, Save, Plus, Trash2, Edit } from "lucide-react";
 import {
   Form,
@@ -474,6 +474,7 @@ const TagsManagementSection = () => {
 // Services Management Section
 const ServicesManagementSection = () => {
   const notify = useNotify();
+  const queryClient = useQueryClient();
   const { data: services, isLoading, refetch } = useGetList<Service>("services", {
     pagination: { page: 1, perPage: 1000 },
     sort: { field: "name", order: "ASC" },
@@ -496,6 +497,11 @@ const ServicesManagementSection = () => {
     await create("services", { data: { name: serviceName.trim() } });
     setServiceName("");
     setCreateDialogOpen(false);
+    // Invalidate all services queries to refresh appointment types and other components
+    queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        Array.isArray(queryKey) && queryKey[0] === "services",
+    });
     refetch();
     notify("Service created successfully");
   };
@@ -519,6 +525,11 @@ const ServicesManagementSection = () => {
     setServiceName("");
     setSelectedService(null);
     setEditDialogOpen(false);
+    // Invalidate all services queries to refresh appointment types and other components
+    queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        Array.isArray(queryKey) && queryKey[0] === "services",
+    });
     refetch();
     notify("Service updated successfully");
   };
@@ -535,6 +546,11 @@ const ServicesManagementSection = () => {
       await deleteService("services", { id: serviceToDelete.id });
       setDeleteDialogOpen(false);
       setServiceToDelete(null);
+      // Invalidate all services queries to refresh appointment types and other components
+      queryClient.invalidateQueries({
+        predicate: ({ queryKey }) =>
+          Array.isArray(queryKey) && queryKey[0] === "services",
+      });
       refetch();
       notify("Service deleted successfully");
     }

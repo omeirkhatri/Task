@@ -259,6 +259,8 @@ export function useContactImport() {
                 );
               } catch (error) {
                 // Log error but don't fail the import if lead-journey creation fails
+                // Using console.error here as logger may not be available in this context
+                // eslint-disable-next-line no-console
                 console.error("Error creating lead-journey entry for imported contact:", error);
               }
             }

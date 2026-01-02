@@ -44,30 +44,20 @@ export function generateRecurringAppointments(
   let endDate: Date | null = null;
   let maxOccurrences: number | null = null;
   
-  console.log("[RecurrenceUtils] Config received:", JSON.stringify(recurrenceConfig, null, 2));
-  console.log("[RecurrenceUtils] Raw occurrences value:", recurrenceConfig.occurrences, "Type:", typeof recurrenceConfig.occurrences);
-  
   if (recurrenceConfig.end_type === "date" && recurrenceConfig.end_date) {
     endDate = new Date(recurrenceConfig.end_date + "T23:59:59");
-    console.log("[RecurrenceUtils] Using end date:", recurrenceConfig.end_date);
   } else if (recurrenceConfig.end_type === "occurrences") {
     // If occurrences is explicitly set, use it; otherwise default to 100
-    console.log("[RecurrenceUtils] End type is occurrences, occurrences value:", recurrenceConfig.occurrences, "Type:", typeof recurrenceConfig.occurrences);
     if (recurrenceConfig.occurrences != null && recurrenceConfig.occurrences > 0) {
       maxOccurrences = Math.min(recurrenceConfig.occurrences, MAX_OCCURRENCES);
-      console.log("[RecurrenceUtils] Using occurrences limit:", maxOccurrences, "(from input:", recurrenceConfig.occurrences, ")");
     } else {
       // Default: 100 occurrences if end_type is "occurrences" but occurrences not set
       maxOccurrences = 100;
-      console.log("[RecurrenceUtils] Occurrences not set or invalid, defaulting to 100");
     }
   } else {
     // Default: 100 occurrences if neither specified
     maxOccurrences = 100;
-    console.log("[RecurrenceUtils] No end condition specified, defaulting to 100 occurrences");
   }
-  
-  console.log("[RecurrenceUtils] Final maxOccurrences:", maxOccurrences);
   
   // Validate end_date is after start_date
   if (endDate && isBefore(endDate, baseStartDate)) {
@@ -95,13 +85,11 @@ export function generateRecurringAppointments(
     let weekOffset = 0;
     const baseDayOfWeek = baseStartDate.getDay();
     const sortedDaysOfWeek = [...recurrenceConfig.days_of_week].sort((a, b) => a - b);
-    console.log(`[Weekly Pattern] Base date: ${format(baseStartDate, "yyyy-MM-dd")}, Base day of week: ${baseDayOfWeek}, Selected days: ${sortedDaysOfWeek.join(", ")}`);
     
     let shouldStop = false;
     while (true) {
       // Check if we've exceeded max occurrences
       if (maxOccurrences !== null && appointments.length >= maxOccurrences) {
-        console.log(`[Weekly Pattern] Stopping: reached max occurrences (${maxOccurrences}), current count: ${appointments.length}`);
         break;
       }
       
@@ -116,30 +104,25 @@ export function generateRecurringAppointments(
       
       // Find the start of the week (Sunday) that contains the reference date
       const weekStartDate = addDays(weekReferenceDate, -weekReferenceDayOfWeek);
-      console.log(`[Weekly Pattern] Week ${weekOffset}: Reference=${format(weekReferenceDate, "yyyy-MM-dd")}, WeekStart=${format(weekStartDate, "yyyy-MM-dd")}, Current count: ${appointments.length}/${maxOccurrences}`);
       
       // Generate appointments for all selected days in this week
       let foundAnyInWeek = false;
       for (const targetDayOfWeek of sortedDaysOfWeek) {
         // Check BEFORE processing if we've exceeded max occurrences
         if (maxOccurrences !== null && appointments.length >= maxOccurrences) {
-          console.log(`[Weekly Pattern] Stopping before processing day ${targetDayOfWeek}: reached max occurrences (${maxOccurrences})`);
           shouldStop = true;
           break;
         }
         
         // Calculate the target date: start of week + target day of week
         const targetDate = addDays(weekStartDate, targetDayOfWeek);
-        console.log(`[Weekly Pattern] Week ${weekOffset}, Day ${targetDayOfWeek}: Target date = ${format(targetDate, "yyyy-MM-dd")}`);
         
         // In week 0, skip the base date (already added as parent) and only include days >= base date
         if (weekOffset === 0) {
           if (targetDayOfWeek === baseDayOfWeek) {
-            console.log(`[Weekly Pattern] Skipping base date (already added)`);
             continue; // Skip base date, already added
           }
           if (isBefore(targetDate, baseStartDate)) {
-            console.log(`[Weekly Pattern] Skipping ${format(targetDate, "yyyy-MM-dd")} (before base date)`);
             continue; // Skip days before base date in week 0
           }
         }
@@ -166,12 +149,10 @@ export function generateRecurringAppointments(
           recurrence_sequence: sequence++,
         });
         
-        console.log(`[Weekly Pattern] Added appointment: ${appointmentDate} (sequence ${sequence - 1}), Total: ${appointments.length}/${maxOccurrences}`);
         foundAnyInWeek = true;
         
         // Check AFTER adding if we've reached the limit
         if (maxOccurrences !== null && appointments.length >= maxOccurrences) {
-          console.log(`[Weekly Pattern] Reached max occurrences (${maxOccurrences}), stopping`);
           shouldStop = true;
           break;
         }

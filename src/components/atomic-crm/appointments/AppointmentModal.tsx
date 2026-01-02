@@ -5,6 +5,56 @@ import { AppointmentForm } from "./AppointmentForm";
 import type { Appointment, RecurrenceConfig } from "../types";
 import { useCreate, useUpdate, useNotify, useDataProvider } from "ra-core";
 import { crmDateTimeStringToISO } from "../misc/timezone";
+import { logger } from "@/lib/logger";
+import { useAppointmentTypes } from "./useAppointmentTypes";
+import { useQueryClient } from "@tanstack/react-query";
+
+type AppointmentFormData = {
+  patient_id: string;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  appointment_type: string[]; // Changed to array for multiple types
+  status: string;
+  notes?: string;
+  mini_notes?: string;
+  full_notes?: string;
+  pickup_instructions?: string;
+  primary_staff_id?: string;
+  driver_id?: string;
+  staff_ids?: string[];
+  is_recurring?: boolean;
+  recurrence_pattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
+  recurrence_interval?: number;
+  recurrence_end_type?: "date" | "occurrences";
+  recurrence_end_date?: string;
+  recurrence_occurrences?: number | string;
+  recurrence_days_of_week?: number[];
+  recurrence_day_of_month?: number;
+  recurrence_week_of_month?: number;
+  recurrence_month?: number;
+  recurrence_custom_unit?: "days" | "weeks" | "months";
+};
+
+type AppointmentData = {
+  patient_id: number;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  appointment_type: string;
+  status: string;
+  notes?: string | null;
+  mini_notes?: string | null;
+  full_notes?: string | null;
+  pickup_instructions?: string | null;
+  primary_staff_id?: number | null;
+  driver_id?: number | null;
+  recurrence_config?: RecurrenceConfig | null;
+  is_recurring: boolean;
+  // Note: staff_ids is NOT a database column - it's handled via appointment_staff_assignments table
+};
 
 type AppointmentModalProps = {
   open: boolean;
@@ -27,8 +77,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const [update] = useUpdate();
   const dataProvider = useDataProvider();
   const notify = useNotify();
+  const appointmentTypes = useAppointmentTypes();
+  const queryClient = useQueryClient();
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: AppointmentFormData) => {
     setIsSubmitting(true);
     setError(null);
     try {
@@ -85,13 +137,44 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         };
       }
 
-      const appointmentData: any = {
+      // Handle multiple appointment types - convert service IDs to appointment types
+      // The form now uses service IDs (e.g., "service_123") as values, so we need to map them back
+      let appointmentType = "doctor_on_call"; // Default
+      
+      if (Array.isArray(formData.appointment_type) && formData.appointment_type.length > 0) {
+        // Find the first selected service and get its appointment type
+        const firstSelectedValue = formData.appointment_type[0];
+        const selectedType = appointmentTypes.find(t => t.value === firstSelectedValue);
+        if (selectedType?.appointmentType) {
+          appointmentType = selectedType.appointmentType;
+        } else if (firstSelectedValue.startsWith("service_")) {
+          // Fallback: if it's a service ID format, try to extract and find the type
+          const serviceId = firstSelectedValue.replace("service_", "");
+          const foundType = appointmentTypes.find(t => t.serviceId?.toString() === serviceId);
+          if (foundType?.appointmentType) {
+            appointmentType = foundType.appointmentType;
+          }
+        }
+      } else if (formData.appointment_type && typeof formData.appointment_type === "string") {
+        // Handle single string value (backward compatibility)
+        if (formData.appointment_type.startsWith("service_")) {
+          const serviceId = formData.appointment_type.replace("service_", "");
+          const foundType = appointmentTypes.find(t => t.serviceId?.toString() === serviceId);
+          if (foundType?.appointmentType) {
+            appointmentType = foundType.appointmentType;
+          }
+        } else {
+          appointmentType = formData.appointment_type;
+        }
+      }
+
+      const appointmentData: AppointmentData = {
         patient_id: parseInt(formData.patient_id, 10),
         appointment_date: startDateTimeISO.split("T")[0], // Store date part only
         start_time: startDateTimeISO,
         end_time: endDateTimeISO,
         duration_minutes: formData.duration_minutes,
-        appointment_type: formData.appointment_type,
+        appointment_type: appointmentType,
         status: formData.status || "scheduled",
         notes: formData.notes || null,
         mini_notes: formData.mini_notes || null,
@@ -100,18 +183,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         primary_staff_id: formData.primary_staff_id ? parseInt(formData.primary_staff_id, 10) : null,
         driver_id: formData.driver_id ? parseInt(formData.driver_id, 10) : null,
         // Include recurrence config if present
-        recurrence_config: recurrenceConfig,
+        recurrence_config: recurrenceConfig || null,
         is_recurring: !!formData.is_recurring,
-        staff_ids: staffIds, // Pass staff_ids separately for processing
+        // Note: staff_ids is NOT included here - it's handled separately via appointment_staff_assignments table
       };
 
-      console.log("Saving appointment:", appointmentData);
-      console.log("Recurrence config:", JSON.stringify(recurrenceConfig, null, 2));
-      console.log("Form data recurrence_occurrences:", formData.recurrence_occurrences, "Type:", typeof formData.recurrence_occurrences);
-      console.log("Form data recurrence_end_type:", formData.recurrence_end_type);
-      if (recurrenceConfig?.days_of_week) {
-        console.log("Days of week selected:", recurrenceConfig.days_of_week);
-      }
+      logger.debug("Saving appointment", { appointmentData, recurrenceConfig });
 
       if (appointment) {
         // Update appointment
@@ -147,17 +224,30 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     },
                   });
                 }
+                
+                // Invalidate queries to refresh appointments and staff assignments
+                queryClient.invalidateQueries({
+                  predicate: ({ queryKey }) =>
+                    Array.isArray(queryKey) && (
+                      queryKey[0] === "appointments" || 
+                      queryKey[0] === "appointment_staff_assignments"
+                    ),
+                });
               } catch (staffError) {
-                console.error("Error updating staff assignments:", staffError);
+                logger.error("Error updating staff assignments", staffError, { context: "AppointmentModal" });
                 // Don't fail the whole update if staff assignments fail
               }
               
               notify("Appointment updated successfully", { type: "success" });
               onSuccess();
             },
-            onError: (error: any) => {
-              console.error("Error updating appointment:", error);
-              const errorMessage = error?.message || error?.body?.message || JSON.stringify(error) || "Failed to update appointment";
+            onError: (error: unknown) => {
+              logger.error("Error updating appointment", error, { context: "AppointmentModal" });
+              const errorMessage = error instanceof Error 
+                ? error.message 
+                : (typeof error === "object" && error !== null && "body" in error && typeof error.body === "object" && error.body !== null && "message" in error.body && typeof error.body.message === "string")
+                  ? error.body.message
+                  : "Failed to update appointment";
               setError(errorMessage);
               notify(`Failed to update appointment: ${errorMessage}`, { type: "error" });
             },
@@ -171,7 +261,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             data: appointmentData,
           },
           {
-            onSuccess: async (result: any) => {
+            onSuccess: async (result: { id: string | number }) => {
               const appointmentId = result.id;
               
               // Create staff assignments
@@ -185,17 +275,30 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                     },
                   });
                 }
+                
+                // Invalidate queries to refresh appointments and staff assignments
+                queryClient.invalidateQueries({
+                  predicate: ({ queryKey }) =>
+                    Array.isArray(queryKey) && (
+                      queryKey[0] === "appointments" || 
+                      queryKey[0] === "appointment_staff_assignments"
+                    ),
+                });
               } catch (staffError) {
-                console.error("Error creating staff assignments:", staffError);
+                logger.error("Error creating staff assignments", staffError, { context: "AppointmentModal" });
                 notify("Appointment created but staff assignments failed", { type: "warning" });
               }
               
               notify("Appointment created successfully", { type: "success" });
               onSuccess();
             },
-            onError: (error: any) => {
-              console.error("Error creating appointment:", error);
-              const errorMessage = error?.message || error?.body?.message || JSON.stringify(error) || "Failed to create appointment";
+            onError: (error: unknown) => {
+              logger.error("Error creating appointment", error, { context: "AppointmentModal" });
+              const errorMessage = error instanceof Error 
+                ? error.message 
+                : (typeof error === "object" && error !== null && "body" in error && typeof error.body === "object" && error.body !== null && "message" in error.body && typeof error.body.message === "string")
+                  ? error.body.message
+                  : "Failed to create appointment";
               setError(errorMessage);
               notify(`Failed to create appointment: ${errorMessage}`, { type: "error" });
             },
@@ -203,7 +306,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         );
       }
     } catch (err) {
-      console.error("Error in handleSubmit:", err);
+      logger.error("Error in handleSubmit", err, { context: "AppointmentModal" });
       setError(err instanceof Error ? err.message : "Failed to save appointment");
       notify("Failed to save appointment", { type: "error" });
     } finally {

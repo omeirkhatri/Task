@@ -63,12 +63,6 @@ export const useAppointmentTypes = (): AppointmentTypeConfig[] => {
   const { data: services } = useGetList<Service>("services", {
     pagination: { page: 1, perPage: 1000 },
     sort: { field: "name", order: "ASC" },
-  }, {
-    retry: false,
-    enabled: true,
-    onError: (error) => {
-      console.warn("Failed to load services for appointment types:", error);
-    },
   });
 
   return useMemo(() => {
@@ -84,24 +78,28 @@ export const useAppointmentTypes = (): AppointmentTypeConfig[] => {
       ];
     }
 
+    // Map all services to appointment types - show all services from Services Management
+    // Use service ID as the value to ensure uniqueness, but store the mapped appointment_type
     return services.map((service, index) => {
       // Map service name to allowed appointment_type value
       const serviceNameLower = service.name.toLowerCase();
-      const value = SERVICE_TO_APPOINTMENT_TYPE_MAP[serviceNameLower] || 
+      const mappedType = SERVICE_TO_APPOINTMENT_TYPE_MAP[serviceNameLower] || 
                     (serviceNameLower.replace(/\s+/g, "_") as string);
       
-      // Validate that the value is in the allowed list, fallback to first allowed type if not
-      const validValue = ALLOWED_APPOINTMENT_TYPES.includes(value as any) 
-        ? value 
+      // Validate that the mapped type is in the allowed list, fallback to first allowed type if not
+      const appointmentType = ALLOWED_APPOINTMENT_TYPES.includes(mappedType as any) 
+        ? mappedType 
         : ALLOWED_APPOINTMENT_TYPES[0];
       
       // Get color from map or use default color based on index
       const color = SERVICE_COLOR_MAP[serviceNameLower] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
 
       return {
-        value: validValue,
-        label: service.name,
+        value: `service_${service.id}`, // Use service ID as unique value
+        label: service.name, // Use the exact service name from Services Management
         color,
+        serviceId: service.id, // Include service ID for unique identification
+        appointmentType, // Store the mapped appointment type for submission
       };
     });
   }, [services]);

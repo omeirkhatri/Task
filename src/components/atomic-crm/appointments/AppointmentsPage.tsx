@@ -221,7 +221,7 @@ const AppointmentsPageContent = () => {
 
   // Build filter for API call
   const apiFilter = useMemo(() => {
-    const filter: any = {};
+    const filter: Record<string, unknown> = {};
     
     // Build appointment_date filter - prioritize dateRange, then filters
     let dateFrom: string | undefined;
@@ -323,7 +323,7 @@ const AppointmentsPageContent = () => {
   );
 
   // Fetch staff assignments to populate staff_ids on appointments
-  const { data: staffAssignments } = useGetList<any>(
+  const { data: staffAssignments } = useGetList<{ appointment_id: number | string; staff_id: number }>(
     "appointment_staff_assignments",
     {
       pagination: { page: 1, perPage: 10000 },
@@ -343,7 +343,7 @@ const AppointmentsPageContent = () => {
     if (!staffAssignments) return appointments;
     
     // Group assignments by appointment_id
-    const assignmentsByAppointment = (staffAssignments || []).reduce((acc: any, assignment: any) => {
+    const assignmentsByAppointment = (staffAssignments || []).reduce((acc: Record<string | number, number[]>, assignment: { appointment_id: number | string; staff_id: number }) => {
       const appId = assignment.appointment_id;
       if (!acc[appId]) {
         acc[appId] = [];
@@ -601,10 +601,28 @@ const AppointmentsPageContent = () => {
 
   const handleModalSuccess = useCallback(() => {
     setIsModalOpen(false);
+    const editedAppointmentId = editingAppointment?.id;
     setEditingAppointment(null);
-    refetchAppointments();
+    
+    // Refetch appointments to get updated data including staff_ids
+    refetchAppointments().then(() => {
+      // Update selectedAppointment if it was the one being edited
+      // We need to wait a bit for the enriched appointments to update
+      setTimeout(() => {
+        if (editedAppointmentId && selectedAppointment?.id === editedAppointmentId) {
+          // Find the updated appointment from enriched appointments
+          const updatedAppointment = enrichedAppointments.find(
+            (app) => app.id === editedAppointmentId
+          );
+          if (updatedAppointment) {
+            setSelectedAppointment(updatedAppointment);
+          }
+        }
+      }, 100);
+    });
+    
     notify("Appointment saved successfully", { type: "success" });
-  }, [notify, refetchAppointments]);
+  }, [notify, refetchAppointments, editingAppointment, selectedAppointment, enrichedAppointments]);
 
   const handleDateNavigation = useCallback((direction: "prev" | "next" | "today") => {
     if (direction === "today") {

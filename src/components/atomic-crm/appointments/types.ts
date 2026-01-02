@@ -12,6 +12,8 @@ export type AppointmentTypeConfig = {
   value: string;
   label: string;
   color: string;
+  serviceId?: string | number; // Optional service ID for unique identification
+  appointmentType?: string; // The mapped appointment type value for database storage
 };
 
 export type StatusConfig = {

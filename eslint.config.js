@@ -34,8 +34,9 @@ export default tseslint.config(
           argsIgnorePattern: "^_",
         },
       ],
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/consistent-type-imports": "warn",
+      "no-console": ["warn", { allow: ["error", "warn"] }],
     },
   },
   // Timezone-aware rules for atomic-crm components
