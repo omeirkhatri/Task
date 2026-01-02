@@ -133,6 +133,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/settings/PaymentSettingsSection.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/services/index.ts",
           "type": "registry:component"
         },
@@ -358,6 +362,86 @@
         },
         {
           "path": "src/components/atomic-crm/providers/commons/activity.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/paymentTransactions.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/index.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/UsageTracker.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/UsageAdjustmentForm.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/RenewalForm.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentTransactionList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentTransactionForm.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentTransactionEdit.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentTransactionCreate.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentPackagesPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentPackageShow.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentPackageList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentPackageForm.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentPackageEdit.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentPackageDeleteButton.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentPackageCreate.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PackageDetailsView.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/InstallmentSchedule.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/BankChargeCalculator.tsx",
           "type": "registry:component"
         },
         {
@@ -605,6 +689,18 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/dashboard/PackagesExpiringSoon.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/dashboard/OverdueInstallments.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/dashboard/LowUsageWarnings.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/dashboard/LeadStatusChart.tsx",
           "type": "registry:component"
         },
@@ -630,6 +726,10 @@
         },
         {
           "path": "src/components/atomic-crm/dashboard/Dashboard.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/dashboard/BulkStatusChange.tsx",
           "type": "registry:component"
         },
         {
@@ -877,6 +977,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/appointments/AppointmentEditDialog.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/appointments/AppointmentDetailsDrawer.tsx",
           "type": "registry:component"
         },
@@ -990,6 +1094,14 @@
         },
         {
           "path": "src/hooks/useTimezone.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/usePaymentSettings.tsx",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/usePackageUsage.tsx",
           "type": "registry:hook"
         },
         {
