@@ -17,6 +17,8 @@ import {
   NOTE_DELETED,
   QUOTE_DELETED,
   TASK_DELETED,
+  APPOINTMENT_CREATED,
+  APPOINTMENT_DELETED,
 } from "../consts";
 import type { Activity } from "../types";
 import { ActivityLogDealCreated } from "./ActivityLogDealCreated";
@@ -32,6 +34,8 @@ import { ActivityLogDealUnarchived } from "./ActivityLogDealUnarchived";
 import { ActivityLogNoteDeleted } from "./ActivityLogNoteDeleted";
 import { ActivityLogQuoteDeleted } from "./ActivityLogQuoteDeleted";
 import { ActivityLogTaskDeleted } from "./ActivityLogTaskDeleted";
+import { ActivityLogAppointmentCreated } from "./ActivityLogAppointmentCreated";
+import { ActivityLogAppointmentDeleted } from "./ActivityLogAppointmentDeleted";
 
 type ActivityLogIteratorProps = {
   activities: Activity[];
@@ -122,6 +126,14 @@ function ActivityItem({ activity }: { activity: Activity }) {
 
   if (activity.type === TASK_DELETED) {
     return <ActivityLogTaskDeleted activity={activity} />;
+  }
+
+  if (activity.type === APPOINTMENT_CREATED) {
+    return <ActivityLogAppointmentCreated activity={activity} />;
+  }
+
+  if (activity.type === APPOINTMENT_DELETED) {
+    return <ActivityLogAppointmentDeleted activity={activity} />;
   }
 
   return null;

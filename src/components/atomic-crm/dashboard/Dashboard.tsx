@@ -2,7 +2,6 @@ import { useGetList } from "ra-core";
 
 import type { Contact, ContactNote } from "../types";
 import { DashboardActivityLog } from "./DashboardActivityLog";
-import { DashboardStepper } from "./DashboardStepper";
 import { RecentLeads } from "./RecentLeads";
 import { LeadStatusChart } from "./LeadStatusChart";
 import { TasksList } from "./TasksList";
@@ -10,7 +9,6 @@ import { Welcome } from "./Welcome";
 
 export const Dashboard = () => {
   const {
-    data: dataContact,
     total: totalContact,
     isPending: isPendingContact,
   } = useGetList<Contact>("contacts", {
@@ -33,14 +31,6 @@ export const Dashboard = () => {
 
   if (isPending) {
     return null;
-  }
-
-  if (!totalContact) {
-    return <DashboardStepper step={1} />;
-  }
-
-  if (!totalContactNotes) {
-    return <DashboardStepper step={2} contactId={dataContact?.[0]?.id} />;
   }
 
   return (

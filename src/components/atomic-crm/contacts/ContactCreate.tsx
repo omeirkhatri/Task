@@ -1,6 +1,5 @@
 import { CreateBase, Form, useDataProvider, useGetIdentity, useNotify, useRedirect, useRefresh } from "ra-core";
 import { FormToolbar } from "@/components/admin/simple-form";
-import { Card, CardContent } from "@/components/ui/card";
 
 import type { Contact } from "../types";
 import { createLeadJourneyDealForContact } from "../deals/createLeadJourneyDeal";
@@ -63,18 +62,17 @@ export const ContactCreate = () => {
       <div className="mt-2 flex justify-center">
         <div className="w-[90%] max-w-6xl">
           <Form 
+            className="flex flex-col gap-6"
             defaultValues={{ 
               sales_id: identity?.id,
               phone_has_whatsapp: false,
               services_interested: [],
             }}
           >
-            <Card>
-              <CardContent>
-                <LeadInputs />
-                <FormToolbar />
-              </CardContent>
-            </Card>
+            <LeadInputs />
+            <div className="flex justify-end pt-4 border-t">
+              <FormToolbar />
+            </div>
           </Form>
         </div>
       </div>

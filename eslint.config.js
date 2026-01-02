@@ -38,5 +38,23 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": "warn",
     },
   },
+  // Timezone-aware rules for atomic-crm components
+  {
+    files: ["**/atomic-crm/**/*.{ts,tsx}"],
+    rules: {
+      // Warn when using Date methods that don't account for timezone
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: 'MemberExpression[object.name="Date"][property.name=/^(getHours|getMinutes|getSeconds|getDate|getMonth|getFullYear|getDay)$/]',
+          message: '⚠️ Use timezone utilities from @/components/atomic-crm/misc/timezone-api instead. Direct Date methods don\'t account for CRM timezone. See TIMEZONE_USAGE_GUIDE.md',
+        },
+        {
+          selector: 'CallExpression[callee.name="Date"][arguments.length>0]',
+          message: '⚠️ Use createCrmDate() or parseCrmDateString() from timezone-api instead of new Date() constructor with arguments. See TIMEZONE_USAGE_GUIDE.md',
+        },
+      ],
+    },
+  },
   storybook.configs["flat/recommended"],
 );

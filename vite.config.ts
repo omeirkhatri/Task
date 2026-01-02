@@ -38,6 +38,9 @@ export default defineConfig({
           "import.meta.env.VITE_INBOUND_EMAIL": JSON.stringify(
             process.env.VITE_INBOUND_EMAIL,
           ),
+          "import.meta.env.VITE_GOOGLE_MAPS_API_KEY": JSON.stringify(
+            process.env.VITE_GOOGLE_MAPS_API_KEY,
+          ),
         }
       : undefined,
   base: "./",
@@ -52,5 +55,20 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  optimizeDeps: {
+    include: [
+      "@fullcalendar/react",
+      "@fullcalendar/daygrid",
+      "@fullcalendar/timegrid",
+      "@fullcalendar/interaction",
+      "@fullcalendar/list",
+      "@tanstack/react-virtual",
+      "leaflet",
+      "react-leaflet",
+    ],
+  },
+  server: {
+    port: 4000,
   },
 });

@@ -15,6 +15,9 @@ start-supabase-functions: ## start the supabase Functions watcher
 supabase-migrate-database: ## apply the migrations to the database
 	npx supabase migration up
 
+supabase-apply-appointments: ## apply the appointments migration specifically
+	node scripts/apply-appointments-migration.mjs
+
 supabase-reset-database: ## reset (and clear!) the database
 	npx supabase db reset
 

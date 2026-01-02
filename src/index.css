@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* FullCalendar CSS imports - using CDN for v6 */
+@import url("https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.20/main.min.css");
+@import url("https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.20/main.min.css");
+@import url("https://cdn.jsdelivr.net/npm/@fullcalendar/timegrid@6.1.20/main.min.css");
+@import url("https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.20/main.min.css");
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -166,5 +172,16 @@ input[type="time"] {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  
+  /* Leaflet map container styles */
+  .leaflet-container {
+    height: 100%;
+    width: 100%;
+    z-index: 0;
+  }
+  
+  .leaflet-container.leaflet-touch-zoom {
+    touch-action: pan-x pan-y;
   }
 }

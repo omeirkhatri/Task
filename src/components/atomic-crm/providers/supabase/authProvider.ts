@@ -77,6 +77,14 @@ export const authProvider: AuthProvider = {
       };
     }
 
+    // Check if we have a valid session
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    if (!sessionData?.session) {
+      // No session found, let baseAuthProvider handle the redirect
+      // It will throw an error that redirects to login
+    }
+
     return baseAuthProvider.checkAuth(params);
   },
   canAccess: async (params) => {

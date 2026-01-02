@@ -16,6 +16,8 @@ import {
   NOTE_DELETED,
   QUOTE_DELETED,
   TASK_DELETED,
+  APPOINTMENT_CREATED,
+  APPOINTMENT_DELETED,
 } from "../../consts";
 import type {
   Activity,
@@ -26,6 +28,7 @@ import type {
   DealNote,
   Quote,
   Task,
+  Appointment,
 } from "../../types";
 
 // FIXME: Requires 5 large queries to get the latest activities.
@@ -52,7 +55,7 @@ export async function getActivityLog(
     filter.id = contactId;
   }
 
-  const [newCompanies, newContactsAndNotes, newDealsAndNotes, newQuotes, newTasks, statusChanges, archiveChanges, deletions] =
+  const [newCompanies, newContactsAndNotes, newDealsAndNotes, newQuotes, newTasks, statusChanges, archiveChanges, deletions, appointments] =
     await Promise.all([
       getNewCompanies(dataProvider, companyFilter),
       getNewContactsAndNotes(dataProvider, filter),
@@ -62,9 +65,10 @@ export async function getActivityLog(
       getStatusChanges(dataProvider, filter),
       getArchiveChanges(dataProvider, filter),
       getDeletions(dataProvider, filter),
+      getAppointments(dataProvider, filter),
     ]);
   return (
-    [...newCompanies, ...newContactsAndNotes, ...newDealsAndNotes, ...newQuotes, ...newTasks, ...statusChanges, ...archiveChanges, ...deletions]
+    [...newCompanies, ...newContactsAndNotes, ...newDealsAndNotes, ...newQuotes, ...newTasks, ...statusChanges, ...archiveChanges, ...deletions, ...appointments]
       // sort by date desc
       .sort((a, b) => {
         const tsA = a.date ? new Date(a.date).getTime() : 0;
@@ -605,6 +609,105 @@ async function getDeletions(
         contact_id: deletion.contact_id,
         task_text: deletion.task_text,
         task_type: deletion.task_type,
+      };
+    }
+    return null;
+  }).filter((activity): activity is Activity => activity !== null);
+}
+
+async function getAppointments(
+  dataProvider: DataProvider,
+  filter: any,
+): Promise<Activity[]> {
+  const appointmentFilter = {} as any;
+  
+  if (filter.sales_id) {
+    appointmentFilter.sales_id = filter.sales_id;
+  }
+  if (filter.id) {
+    // Filter by specific contact ID
+    appointmentFilter.contact_id = filter.id;
+  }
+  if (filter.company_id) {
+    // For company filter, we need to get contact IDs first
+    const { data: contacts } = await dataProvider.getList<Contact>("contacts", {
+      filter: { company_id: filter.company_id },
+      pagination: { page: 1, perPage: 250 },
+    });
+    const contactIds = contacts.map((contact) => contact.id).join(",");
+    if (contactIds) {
+      appointmentFilter["contact_id@in"] = `(${contactIds})`;
+    } else {
+      return [];
+    }
+  }
+
+  // Fetch appointment activities from activity_log
+  let appointmentActivities: any[] = [];
+  try {
+    const result = await dataProvider.getList<any>("activity_log", {
+      filter: {
+        ...appointmentFilter,
+        "type@in": "(appointment.created,appointment.deleted)",
+      },
+      pagination: { page: 1, perPage: 250 },
+      sort: { field: "date", order: "DESC" },
+    });
+    appointmentActivities = result?.data || [];
+  } catch (error) {
+    console.warn("Failed to fetch appointment activities from activity_log:", error);
+    return [];
+  }
+
+  if (!appointmentActivities || appointmentActivities.length === 0) {
+    return [];
+  }
+
+  // Fetch appointment details for created appointments
+  const appointmentIds = appointmentActivities
+    .filter((a) => a.type === "appointment.created" && a.appointment_id)
+    .map((a) => a.appointment_id);
+  
+  let appointmentsMap = new Map<Identifier, Appointment>();
+  if (appointmentIds.length > 0) {
+    try {
+      const { data: appointments } = await dataProvider.getList<Appointment>("appointments", {
+        filter: {
+          "id@in": `(${appointmentIds.join(",")})`,
+        },
+        pagination: { page: 1, perPage: 250 },
+      });
+      appointments?.forEach((apt) => {
+        appointmentsMap.set(apt.id, apt);
+      });
+    } catch (error) {
+      console.warn("Failed to fetch appointment details:", error);
+    }
+  }
+
+  return appointmentActivities.map((activityLog: any) => {
+    const baseActivity = {
+      id: `appointment.${activityLog.appointment_id || activityLog.id}.${activityLog.type}`,
+      sales_id: activityLog.sales_id,
+      contact_id: activityLog.contact_id,
+      date: activityLog.date || new Date().toISOString(),
+    };
+
+    if (activityLog.type === "appointment.created") {
+      const appointment = appointmentsMap.get(activityLog.appointment_id);
+      return {
+        ...baseActivity,
+        type: APPOINTMENT_CREATED,
+        appointment_id: activityLog.appointment_id,
+        appointment,
+      };
+    } else if (activityLog.type === "appointment.deleted") {
+      return {
+        ...baseActivity,
+        type: APPOINTMENT_DELETED,
+        appointment_id: activityLog.appointment_id,
+        appointment_date: activityLog.appointment_date,
+        appointment_type: activityLog.appointment_type,
       };
     }
     return null;

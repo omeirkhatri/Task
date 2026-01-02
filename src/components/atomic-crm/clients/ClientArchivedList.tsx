@@ -117,7 +117,18 @@ export const ClientArchivedList = ({ open, onOpenChange }: ClientArchivedListPro
 };
 
 export function getRelativeTimeString(dateString: string): string {
+  // Handle "Unknown" or invalid date strings
+  if (dateString === "Unknown" || !dateString) {
+    return "Unknown";
+  }
+
   const date = new Date(dateString);
+  
+  // Check if date is invalid
+  if (isNaN(date.getTime())) {
+    return dateString; // Return the original string if date is invalid
+  }
+
   date.setHours(0, 0, 0, 0);
 
   const today = new Date();
@@ -126,13 +137,14 @@ export function getRelativeTimeString(dateString: string): string {
   const diff = date.getTime() - today.getTime();
   const unitDiff = Math.round(diff / (1000 * 60 * 60 * 24));
 
+  // Check if unitDiff is not a finite number
+  if (!isFinite(unitDiff)) {
+    return formatCrmDate(date);
+  }
+
   // Check if the date is more than one week old
   if (Math.abs(unitDiff) > 7) {
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(date);
+    return formatCrmDate(date);
   }
 
   // Intl.RelativeTimeFormat for dates within the last week

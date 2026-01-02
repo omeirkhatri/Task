@@ -4,20 +4,18 @@ import type { ReactNode } from "react";
 import { ArrayField } from "@/components/admin/array-field";
 import { EditButton } from "@/components/admin/edit-button";
 import { DeleteButton } from "@/components/admin";
-import { ReferenceField } from "@/components/admin/reference-field";
 import { ShowButton } from "@/components/admin/show-button";
 import { SingleFieldList } from "@/components/admin/single-field-list";
 import { TextField } from "@/components/admin/text-field";
-import { DateField } from "@/components/admin/date-field";
 import { EmailField } from "@/components/admin/email-field";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { TagsListEdit } from "./TagsListEdit";
 import { ServicesListEdit } from "./ServicesListEdit";
+import { AccountManagerEdit } from "./AccountManagerEdit";
 import { AsideSection } from "../misc/AsideSection";
 import { useConfigurationContext } from "../root/ConfigurationContext";
-import { SaleName } from "../sales/SaleName";
 import type { Contact, Deal } from "../types";
 import { ContactMergeButton } from "./ContactMergeButton";
 import { ExportVCardButton } from "./ExportVCardButton";
@@ -155,36 +153,8 @@ export const ContactAside = ({ link = "edit", deals = [] }: { link?: "edit" | "s
         <TagsListEdit />
       </AsideSection>
 
-      <AsideSection title="Background info">
-        <WithRecord<Contact>
-          render={(record) =>
-            record?.background ? (
-              <TextField source="background" record={record} className="pb-2" />
-            ) : null
-          }
-        />
-        <div className="text-muted-foreground">
-          <span className="text-sm">Added on</span>{" "}
-          <DateField
-            source="first_seen"
-            options={{ year: "numeric", month: "long", day: "numeric" }}
-          />
-        </div>
-
-        <div className="text-muted-foreground">
-          <span className="text-sm">Last activity on</span>{" "}
-          <DateField
-            source="last_seen"
-            options={{ year: "numeric", month: "long", day: "numeric" }}
-          />
-        </div>
-
-        <div className="inline-flex text-muted-foreground">
-          Followed by&nbsp;
-          <ReferenceField source="sales_id" reference="sales">
-            <SaleName />
-          </ReferenceField>
-        </div>
+      <AsideSection title="Account Manager">
+        <AccountManagerEdit />
       </AsideSection>
 
       {link !== "edit" && (

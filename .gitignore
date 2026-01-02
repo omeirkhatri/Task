@@ -37,3 +37,6 @@ dist/
 
 # Shadcn Registry
 public/r/
+
+# Cursor IDE
+.cursor/

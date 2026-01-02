@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { EditBase, Form, useEditContext } from "ra-core";
 import { FormToolbar } from "@/components/admin/simple-form";
 
@@ -36,20 +35,18 @@ const ContactEditContent = () => {
     <div className="mt-2 flex justify-center">
       <div className="w-[90%] max-w-6xl flex gap-8">
         <div className="flex-1">
-        <Form 
-          className="flex flex-1 flex-col gap-4"
-          defaultValues={{
-            ...record,
-            first_name: fullName,
-          }}
-        >
-        <Card>
-          <CardContent>
-              <LeadInputs />
-            <FormToolbar />
-          </CardContent>
-        </Card>
-      </Form>
+          <Form 
+            className="flex flex-1 flex-col gap-6"
+            defaultValues={{
+              ...record,
+              first_name: fullName,
+            }}
+          >
+            <LeadInputs />
+            <div className="flex justify-end pt-4 border-t">
+              <FormToolbar />
+            </div>
+          </Form>
         </div>
         <ContactAside link="show" />
       </div>

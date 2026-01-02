@@ -131,20 +131,12 @@ export function getRelativeTimeString(dateString: string): string {
 
   // Validate unitDiff is a finite number
   if (!isFinite(unitDiff)) {
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(date);
+    return formatCrmDate(date);
   }
 
   // Check if the date is more than one week old
   if (Math.abs(unitDiff) > 7) {
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(date);
+    return formatCrmDate(date);
   }
 
   // Intl.RelativeTimeFormat for dates within the last week

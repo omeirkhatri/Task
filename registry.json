@@ -77,6 +77,38 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/staff/index.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/staff/StaffShow.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/staff/StaffListFilter.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/staff/StaffListContent.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/staff/StaffList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/staff/StaffInputs.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/staff/StaffEdit.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/staff/StaffCreate.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/simple-list/SimpleListLoading.tsx",
           "type": "registry:component"
         },
@@ -389,6 +421,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/misc/timezone-api.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/misc/textParsing.ts",
           "type": "registry:component"
         },
@@ -677,7 +713,15 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/contacts/ContactArchivedList.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/contacts/Avatar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/contacts/AccountManagerEdit.tsx",
           "type": "registry:component"
         },
         {
@@ -773,6 +817,86 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/clients/ClientArchivedList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/useAppointmentTypes.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/recurrenceUtils.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/index.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/VirtualizedTable.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/CustomMultiSelect.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentsPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentModal.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentMarker.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentMapView.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentInfoWindow.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentForm.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentFiltersTop.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentFilters.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentDetailsDrawer.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentDeleteDialog.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentContextMenu.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentCluster.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/AppointmentCalendar.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/activity/ActivityLogTaskDeleted.tsx",
           "type": "registry:component"
         },
@@ -837,6 +961,14 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/activity/ActivityLogAppointmentDeleted.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/activity/ActivityLogAppointmentCreated.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/activity/ActivityLog.tsx",
           "type": "registry:component"
         },
@@ -854,6 +986,10 @@
         },
         {
           "path": "src/hooks/user-menu-context.tsx",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/useTimezone.ts",
           "type": "registry:hook"
         },
         {

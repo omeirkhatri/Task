@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { useFieldValue, useTranslate } from "ra-core";
 
-import { CRM_TIME_ZONE } from "@/components/atomic-crm/misc/timezone";
+import { getCrmTimeZone } from "@/components/atomic-crm/misc/timezone";
 import { genericMemo } from "@/lib/genericMemo";
 import type { FieldProps } from "@/lib/field.type";
 
@@ -71,25 +71,51 @@ const DateFieldImpl = <
   const date = transform(value);
 
   let dateString = "";
+  const currentTimeZone = getCrmTimeZone();
   // Default to DD/MM/YYYY format
   const defaultDateOptions: Intl.DateTimeFormatOptions = {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    timeZone: CRM_TIME_ZONE,
+    timeZone: currentTimeZone,
   };
-  const enforcedOptions = { ...defaultDateOptions, ...options, timeZone: CRM_TIME_ZONE };
+  const enforcedOptions = { ...defaultDateOptions, ...options, timeZone: currentTimeZone };
   const defaultLocales = locales || "en-GB";
+  
   if (date) {
     if (showTime && showDate) {
-      dateString = toLocaleStringSupportsLocales
-        ? date.toLocaleString(defaultLocales, enforcedOptions)
-        : date.toLocaleString();
+      // For date+time, format date as DD/MM/YYYY and time separately
+      const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+        timeZone: currentTimeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+        timeZone: currentTimeZone,
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      const dateParts = dateFormatter.formatToParts(date);
+      const day = dateParts.find((p) => p.type === "day")?.value || "";
+      const month = dateParts.find((p) => p.type === "month")?.value || "";
+      const year = dateParts.find((p) => p.type === "year")?.value || "";
+      const timeStr = timeFormatter.format(date);
+      dateString = `${day}/${month}/${year} ${timeStr}`;
     } else if (showDate) {
-      const dateOptions = { ...enforcedOptions };
-      dateString = toLocaleStringSupportsLocales
-        ? date.toLocaleDateString(defaultLocales, dateOptions)
-        : date.toLocaleDateString();
+      // Format as DD/MM/YYYY explicitly
+      const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+        timeZone: currentTimeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      const dateParts = dateFormatter.formatToParts(date);
+      const day = dateParts.find((p) => p.type === "day")?.value || "";
+      const month = dateParts.find((p) => p.type === "month")?.value || "";
+      const year = dateParts.find((p) => p.type === "year")?.value || "";
+      dateString = `${day}/${month}/${year}`;
     } else if (showTime) {
       dateString = toLocaleStringSupportsLocales
         ? date.toLocaleTimeString(defaultLocales, enforcedOptions)

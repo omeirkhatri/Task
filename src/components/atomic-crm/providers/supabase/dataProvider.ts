@@ -597,6 +597,221 @@ const dataProviderWithCustomMethods = {
       return baseDataProvider.create(mappedResource, { ...params, data: cleanedData });
     }
     
+    // Handle recurring appointments
+    if (mappedResource === "appointments" && params.data) {
+      const appointmentData = { ...params.data };
+      const staffIds = appointmentData.staff_ids || [];
+      delete appointmentData.staff_ids; // Remove staff_ids as it's not a column
+      
+      // Check if this is a recurring appointment
+      if (appointmentData.is_recurring && appointmentData.recurrence_config) {
+        // Import recurrence utilities dynamically to avoid circular dependencies
+        const { generateRecurringAppointments } = await import("../../appointments/recurrenceUtils");
+        
+        // Generate UUID for recurrence_id
+        const recurrenceId = crypto.randomUUID();
+        
+        // Prepare base appointment data for generation
+        const baseAppointment = {
+          patient_id: appointmentData.patient_id,
+          appointment_date: appointmentData.appointment_date,
+          start_time: appointmentData.start_time,
+          end_time: appointmentData.end_time,
+          duration_minutes: appointmentData.duration_minutes,
+          appointment_type: appointmentData.appointment_type,
+          status: appointmentData.status || "scheduled",
+          notes: appointmentData.notes || null,
+          mini_notes: appointmentData.mini_notes || null,
+          full_notes: appointmentData.full_notes || null,
+          pickup_instructions: appointmentData.pickup_instructions || null,
+          primary_staff_id: appointmentData.primary_staff_id || null,
+          driver_id: appointmentData.driver_id || null,
+        };
+        
+        // Generate all appointment instances
+        console.log("Generating recurring appointments with config:", appointmentData.recurrence_config);
+        console.log("Base appointment:", baseAppointment);
+        const generatedAppointments = generateRecurringAppointments(
+          baseAppointment,
+          appointmentData.recurrence_config
+        );
+        console.log(`Generated ${generatedAppointments.length} appointments`);
+        console.log("First few appointments:", generatedAppointments.slice(0, 10).map(a => ({
+          date: a.appointment_date,
+          start: a.start_time,
+          sequence: a.recurrence_sequence
+        })));
+        
+        // Create parent appointment (sequence 0) with recurrence_config
+        const parentData = {
+          ...baseAppointment,
+          ...generatedAppointments[0],
+          recurrence_id: recurrenceId,
+          recurrence_config: appointmentData.recurrence_config,
+          is_recurring: true,
+          recurrence_sequence: 0,
+        };
+        
+        const parentResult = await baseDataProvider.create(mappedResource, {
+          ...params,
+          data: parentData,
+        });
+        
+        const parentId = parentResult.id;
+        
+        // Create staff assignments for parent
+        if (staffIds.length > 0) {
+          for (const staffId of staffIds) {
+            try {
+              await baseDataProvider.create("appointment_staff_assignments", {
+                data: {
+                  appointment_id: parentId,
+                  staff_id: staffId,
+                  role: "other",
+                },
+              });
+            } catch (staffError) {
+              console.warn("Error creating staff assignment for parent:", staffError);
+            }
+          }
+        }
+        
+        // Log activity for parent appointment
+        try {
+          const { data: contact } = await supabase
+            .from("contacts")
+            .select("sales_id")
+            .eq("id", appointmentData.patient_id)
+            .maybeSingle();
+          
+          await supabase.from("activity_log").insert({
+            type: "appointment.created",
+            appointment_id: parentId,
+            contact_id: appointmentData.patient_id,
+            sales_id: contact?.sales_id || null,
+            date: new Date().toISOString(),
+          });
+        } catch (activityError) {
+          console.warn("Error logging parent appointment activity:", activityError);
+        }
+        
+        // Create child appointments (sequence 1+)
+        const childResults = [];
+        for (let i = 1; i < generatedAppointments.length; i++) {
+          const childData = {
+            ...generatedAppointments[i],
+            recurrence_id: recurrenceId,
+            is_recurring: true,
+            recurrence_sequence: i,
+            // Don't include recurrence_config on children
+          };
+          
+          try {
+            const childResult = await baseDataProvider.create(mappedResource, {
+              ...params,
+              data: childData,
+            });
+            
+            const childId = childResult.id;
+            childResults.push(childResult);
+            
+            // Create staff assignments for child
+            if (staffIds.length > 0) {
+              for (const staffId of staffIds) {
+                try {
+                  await baseDataProvider.create("appointment_staff_assignments", {
+                    data: {
+                      appointment_id: childId,
+                      staff_id: staffId,
+                      role: "other",
+                    },
+                  });
+                } catch (staffError) {
+                  console.warn("Error creating staff assignment for child:", staffError);
+                }
+              }
+            }
+            
+            // Log activity for child appointment
+            try {
+              const { data: contact } = await supabase
+                .from("contacts")
+                .select("sales_id")
+                .eq("id", appointmentData.patient_id)
+                .maybeSingle();
+              
+              await supabase.from("activity_log").insert({
+                type: "appointment.created",
+                appointment_id: childId,
+                contact_id: appointmentData.patient_id,
+                sales_id: contact?.sales_id || null,
+                date: new Date().toISOString(),
+              });
+            } catch (activityError) {
+              console.warn("Error logging child appointment activity:", activityError);
+            }
+          } catch (childError) {
+            console.error(`Error creating child appointment ${i}:`, childError);
+            // Continue creating other children even if one fails
+          }
+        }
+        
+        // Return parent result with metadata about children
+        return {
+          ...parentResult,
+          meta: {
+            ...parentResult.meta,
+            childrenCreated: childResults.length,
+            totalCreated: childResults.length + 1,
+          },
+        };
+      } else {
+        // Non-recurring appointment - create as normal but log activity
+        const result = await baseDataProvider.create(mappedResource, {
+          ...params,
+          data: appointmentData,
+        });
+        
+        // Create staff assignments
+        if (staffIds.length > 0) {
+          for (const staffId of staffIds) {
+            try {
+              await baseDataProvider.create("appointment_staff_assignments", {
+                data: {
+                  appointment_id: result.id,
+                  staff_id: staffId,
+                  role: "other",
+                },
+              });
+            } catch (staffError) {
+              console.warn("Error creating staff assignment:", staffError);
+            }
+          }
+        }
+        
+        // Log activity for appointment creation
+        try {
+          const { data: contact } = await supabase
+            .from("contacts")
+            .select("sales_id")
+            .eq("id", appointmentData.patient_id)
+            .maybeSingle();
+          
+          await supabase.from("activity_log").insert({
+            type: "appointment.created",
+            appointment_id: result.id,
+            contact_id: appointmentData.patient_id,
+            sales_id: contact?.sales_id || null,
+            date: new Date().toISOString(),
+          });
+        } catch (activityError) {
+          console.warn("Error logging appointment activity:", activityError);
+        }
+        
+        return result;
+      }
+    }
+    
     return baseDataProvider.create(mappedResource, params);
   },
   async update(resource: string, params: any) {
@@ -723,6 +938,80 @@ const dataProviderWithCustomMethods = {
     
     record = fetchedRecord;
 
+    // Handle recurring appointment deletion
+    if (mappedResource === "appointments" && record) {
+      const deleteFutureOnly = params.meta?.deleteFutureOnly || false;
+      const isRecurring = record.is_recurring || record.recurrence_id;
+      
+      if (isRecurring && deleteFutureOnly) {
+        // Delete this appointment and all future appointments in the series
+        const recurrenceId = record.recurrence_id;
+        const appointmentStartTime = record.start_time;
+        
+        // Find all appointments with same recurrence_id and start_time >= this appointment's start_time
+        const { data: futureAppointments } = await supabase
+          .from("appointments")
+          .select("id, patient_id, start_time, appointment_type")
+          .eq("recurrence_id", recurrenceId)
+          .gte("start_time", appointmentStartTime);
+        
+        const appointmentsToDelete = futureAppointments || [];
+        
+        // Delete staff assignments and log activities for each appointment
+        for (const apt of appointmentsToDelete) {
+          try {
+            // Delete staff assignments
+            const { data: assignments } = await supabase
+              .from("appointment_staff_assignments")
+              .select("id")
+              .eq("appointment_id", apt.id);
+            
+            for (const assignment of assignments || []) {
+              await supabase
+                .from("appointment_staff_assignments")
+                .delete()
+                .eq("id", assignment.id);
+            }
+            
+            // Log deletion activity
+            try {
+              const { data: contact } = await supabase
+                .from("contacts")
+                .select("sales_id")
+                .eq("id", apt.patient_id)
+                .maybeSingle();
+              
+              await supabase.from("activity_log").insert({
+                type: "appointment.deleted",
+                appointment_id: apt.id,
+                contact_id: apt.patient_id,
+                sales_id: contact?.sales_id || null,
+                appointment_date: apt.start_time ? apt.start_time.split("T")[0] : null,
+                appointment_type: apt.appointment_type || null,
+                date: new Date().toISOString(),
+              });
+            } catch (activityError) {
+              console.warn("Error logging appointment deletion activity:", activityError);
+            }
+            
+            // Delete the appointment
+            await supabase
+              .from("appointments")
+              .delete()
+              .eq("id", apt.id);
+          } catch (error) {
+            console.error(`Error deleting appointment ${apt.id}:`, error);
+            // Continue deleting other appointments even if one fails
+          }
+        }
+        
+        // Return the deleted record
+        return { data: record };
+      }
+      // For single appointment deletion, continue to normal deletion flow below
+      // (activity logging will happen in the general deletion section)
+    }
+
     // If a contact is deleted, also archive any related Lead Journey items (deals)
     // so they stop showing as cards after the FK sets lead_id to NULL.
     if (mappedResource === "contacts" && params?.id != null) {
@@ -803,9 +1092,19 @@ const dataProviderWithCustomMethods = {
         activityData.contact_id = record.contact_id || null;
         activityData.task_text = record.text || null;
         activityData.task_type = record.type || null;
+      } else if (mappedResource === "appointments") {
+        // Appointment deletion (single appointment, not handled above)
+        // Skip if we already handled it in the recurring appointment section
+        if (!record.is_recurring || !params.meta?.deleteFutureOnly) {
+          activityData.type = "appointment.deleted";
+          activityData.appointment_id = record.id;
+          activityData.contact_id = record.patient_id || null;
+          activityData.appointment_date = record.appointment_date || null;
+          activityData.appointment_type = record.appointment_type || null;
+        }
       }
 
-      // Only create activity log entry if it's a note, quote, or task
+      // Only create activity log entry if it's a note, quote, task, or appointment
       if (activityData.type) {
         await supabase.from("activity_log").insert(activityData);
       }
@@ -1033,6 +1332,18 @@ export const dataProvider = withLifecycleCallbacks(
           "email",
           "phone",
           "background",
+        ])(params);
+      },
+    },
+    {
+      resource: "staff",
+      beforeGetList: async (params) => {
+        return applyFullTextSearch([
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "staff_type",
         ])(params);
       },
     },

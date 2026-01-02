@@ -23,9 +23,11 @@ import {
 } from "../providers/supabase";
 import sales from "../sales";
 import servicesResource from "../services";
+import staff from "../staff";
 import { NotesPage } from "../notes/NotesPage";
 import { SettingsPage } from "../settings/SettingsPage";
 import { TasksPage } from "../tasks/TasksPage";
+import { AppointmentsPage } from "../appointments/AppointmentsPage";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
 import { ConfigurationProvider } from "./ConfigurationContext";
 import {
@@ -163,6 +165,7 @@ export const CRM = ({
           <Route path={SettingsPage.path} element={<SettingsPage />} />
           <Route path={TasksPage.path} element={<TasksPage />} />
           <Route path={NotesPage.path} element={<NotesPage />} />
+          <Route path={AppointmentsPage.path} element={<AppointmentsPage />} />
         </CustomRoutes>
         <Resource name="lead-journey" options={{ label: "Lead Journey" }} {...deals} />
         <Resource name="contacts" options={{ label: "Leads" }} {...contacts} />
@@ -173,6 +176,7 @@ export const CRM = ({
         <Resource name="quotes" />
         <Resource name="sales" {...sales} />
         <Resource name="services" {...servicesResource} />
+        <Resource name="staff" options={{ label: "Staff" }} {...staff} />
         <Resource name="tags" />
       </Admin>
     </ConfigurationProvider>

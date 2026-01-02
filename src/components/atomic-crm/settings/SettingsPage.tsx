@@ -56,6 +56,15 @@ import { TagEditModal } from "../tags/TagEditModal";
 import { TagChip } from "../tags/TagChip";
 import { colors } from "../tags/colors";
 import { RoundButton } from "../tags/RoundButton";
+import { useTimezone } from "@/hooks/useTimezone";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { formatCrmDateTime } from "../misc/timezone";
 
 export const SettingsPage = () => {
   const [isEditMode, setEditMode] = useState(false);
@@ -98,8 +107,9 @@ export const SettingsPage = () => {
   return (
     <div className="max-w-6xl mx-auto mt-8 px-4">
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className={isAdministrator ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
+        <TabsList className={isAdministrator ? "grid w-full grid-cols-5" : "grid w-full grid-cols-4"}>
           <TabsTrigger value="profile">My Info</TabsTrigger>
+          <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
           {isAdministrator && (
@@ -111,6 +121,10 @@ export const SettingsPage = () => {
           <Form onSubmit={handleOnSubmit} record={data}>
             <SettingsForm isEditMode={isEditMode} setEditMode={setEditMode} />
           </Form>
+        </TabsContent>
+
+        <TabsContent value="general" className="mt-6">
+          <GeneralSettingsSection />
         </TabsContent>
 
         <TabsContent value="tags" className="mt-6">
@@ -798,6 +812,83 @@ const UsersManagementSection = () => {
           onClose={() => setDeleteDialogOpen(false)}
           onConfirm={handleDeleteConfirm}
         />
+      </CardContent>
+    </Card>
+  );
+};
+
+// General Settings Section
+const GeneralSettingsSection = () => {
+  const { timezone, setTimezone, offsetLabel, displayName } = useTimezone();
+  const notify = useNotify();
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+
+  // Update current time display every second
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Update time display when timezone changes
+  React.useEffect(() => {
+    setCurrentTime(new Date());
+  }, [timezone]);
+
+  const handleTimezoneChange = (newTimezone: string) => {
+    setTimezone(newTimezone);
+    // Show notification briefly before reload
+    notify("Timezone updated successfully. Page will refresh...", { type: "success" });
+    // Force a page refresh to update all date/time displays
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
+  // Common timezones with their display names
+  const timezones = [
+    { value: "Asia/Dubai", label: "Dubai (UTC+4)", offset: "UTC+4" },
+    { value: "Asia/Kolkata", label: "Mumbai/Kolkata (UTC+5:30)", offset: "UTC+5:30" },
+    { value: "Asia/Singapore", label: "Singapore (UTC+8)", offset: "UTC+8" },
+    { value: "Asia/Tokyo", label: "Tokyo (UTC+9)", offset: "UTC+9" },
+    { value: "Europe/London", label: "London (UTC+0/+1)", offset: "UTC+0/+1" },
+    { value: "Europe/Paris", label: "Paris (UTC+1/+2)", offset: "UTC+1/+2" },
+    { value: "America/New_York", label: "New York (UTC-5/-4)", offset: "UTC-5/-4" },
+    { value: "America/Los_Angeles", label: "Los Angeles (UTC-8/-7)", offset: "UTC-8/-7" },
+    { value: "Australia/Sydney", label: "Sydney (UTC+10/+11)", offset: "UTC+10/+11" },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>General Settings</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="timezone-select">Application Timezone</Label>
+            <p className="text-sm text-muted-foreground">
+              All dates and times in the application will be displayed in this timezone.
+            </p>
+            <Select value={timezone} onValueChange={handleTimezoneChange}>
+              <SelectTrigger id="timezone-select" className="w-full max-w-md">
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                {timezones.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="mt-2 text-sm text-muted-foreground">
+              <p>Current timezone: <strong>{displayName}</strong> ({offsetLabel})</p>
+              <p className="mt-1">Current time: <strong>{formatCrmDateTime(currentTime)}</strong></p>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -13,3 +13,5 @@ export const DEAL_UNARCHIVED = "deal.unarchived" as const;
 export const NOTE_DELETED = "note.deleted" as const;
 export const QUOTE_DELETED = "quote.deleted" as const;
 export const TASK_DELETED = "task.deleted" as const;
+export const APPOINTMENT_CREATED = "appointment.created" as const;
+export const APPOINTMENT_DELETED = "appointment.deleted" as const;

@@ -17,6 +17,8 @@ import type {
   NOTE_DELETED,
   QUOTE_DELETED,
   TASK_DELETED,
+  APPOINTMENT_CREATED,
+  APPOINTMENT_DELETED,
 } from "./consts";
 
 export type SignUpData = {
@@ -123,7 +125,10 @@ export type Contact = {
   flat_villa_number?: string;
   building_street?: string;
   area?: string;
+  city?: string;
   google_maps_link?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   phone_has_whatsapp?: boolean;
   services_interested?: Identifier[];
   description?: string;
@@ -326,6 +331,25 @@ export type ActivityTaskDeleted = {
   date: string;
 } & Pick<RaRecord, "id">;
 
+export type ActivityAppointmentCreated = {
+  type: typeof APPOINTMENT_CREATED;
+  sales_id?: Identifier;
+  contact_id?: Identifier;
+  appointment_id?: Identifier;
+  appointment?: Appointment;
+  date: string;
+} & Pick<RaRecord, "id">;
+
+export type ActivityAppointmentDeleted = {
+  type: typeof APPOINTMENT_DELETED;
+  sales_id?: Identifier;
+  contact_id?: Identifier;
+  appointment_id?: Identifier;
+  appointment_date?: string;
+  appointment_type?: string;
+  date: string;
+} & Pick<RaRecord, "id">;
+
 export type Activity = RaRecord &
   (
     | ActivityCompanyCreated
@@ -343,6 +367,8 @@ export type Activity = RaRecord &
     | ActivityNoteDeleted
     | ActivityQuoteDeleted
     | ActivityTaskDeleted
+    | ActivityAppointmentCreated
+    | ActivityAppointmentDeleted
   );
 
 export interface RAFile {
@@ -370,3 +396,61 @@ export interface ContactGender {
   label: string;
   icon: ComponentType<{ className?: string }>;
 }
+
+export type Staff = {
+  first_name: string;
+  last_name: string;
+  staff_type: string;
+  phone: string;
+  email?: string;
+  created_at: string;
+  updated_at: string;
+  // Optional fields (kept for backward compatibility with existing data)
+  specialization?: string;
+  status?: "active" | "inactive";
+} & Pick<RaRecord, "id">;
+
+export type RecurrenceConfig = {
+  pattern: "daily" | "weekly" | "monthly" | "yearly" | "custom";
+  interval: number; // e.g., 2 for "every 2 weeks"
+  end_type: "date" | "occurrences";
+  end_date?: string | null; // YYYY-MM-DD
+  occurrences?: number | null;
+  days_of_week?: number[] | null; // For weekly: 0=Sunday, 6=Saturday
+  day_of_month?: number | null; // For monthly: 1-31
+  week_of_month?: number | null; // For monthly: 1-5 (first Monday, etc.)
+  month?: number | null; // For yearly: 1-12
+  custom_unit?: "days" | "weeks" | "months" | null; // For custom pattern
+};
+
+export type Appointment = {
+  patient_id: Identifier;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  appointment_type: "doctor_on_call" | "lab_test" | "teleconsultation" | "physiotherapy" | "caregiver" | "iv_therapy";
+  status: "scheduled" | "confirmed" | "completed" | "cancelled";
+  notes?: string;
+  mini_notes?: string;
+  full_notes?: string;
+  pickup_instructions?: string;
+  custom_fields?: Record<string, any>;
+  primary_staff_id?: Identifier;
+  driver_id?: Identifier;
+  staff_ids?: Identifier[];
+  created_at: string;
+  updated_at: string;
+  // Recurrence fields
+  recurrence_id?: string;
+  recurrence_config?: RecurrenceConfig;
+  is_recurring?: boolean;
+  recurrence_sequence?: number;
+} & Pick<RaRecord, "id">;
+
+export type AppointmentStaffAssignment = {
+  appointment_id: Identifier;
+  staff_id: Identifier;
+  role: "primary" | "driver" | "other";
+  created_at: string;
+} & Pick<RaRecord, "id">;

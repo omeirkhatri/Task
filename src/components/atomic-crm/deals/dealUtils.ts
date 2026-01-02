@@ -1,3 +1,5 @@
+import { formatCrmDate } from "../misc/timezone";
+
 export function getRelativeTimeString(dateString: string): string {
   const date = new Date(dateString);
   date.setHours(0, 0, 0, 0);
@@ -10,11 +12,7 @@ export function getRelativeTimeString(dateString: string): string {
 
   // Check if the date is more than one week old
   if (Math.abs(unitDiff) > 7) {
-    return new Intl.DateTimeFormat("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }).format(date);
+    return formatCrmDate(date);
   }
 
   // Intl.RelativeTimeFormat for dates within the last week
