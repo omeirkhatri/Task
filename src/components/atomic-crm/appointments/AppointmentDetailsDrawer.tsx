@@ -1,14 +1,16 @@
 import React from "react";
-import { X, User, Calendar, Clock, Stethoscope, Car, FileText, MapPin, Phone, ExternalLink, Printer, Copy, Edit, Trash2 } from "lucide-react";
+import { X, User, Calendar, Clock, Stethoscope, Car, FileText, MapPin, Phone, ExternalLink, Printer, Copy, Edit, Trash2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO } from "date-fns";
-import type { Appointment } from "../types";
+import type { Appointment, PaymentPackage, Service } from "../types";
 import { APPOINTMENT_STATUSES } from "./types";
 import { useAppointmentTypes } from "./useAppointmentTypes";
 import { useGetList } from "ra-core";
 import type { Contact, Staff } from "../types";
 import { formatCrmDate, formatCrmTime } from "../misc/timezone";
+import { Link } from "react-router";
+import { usePackageUsage } from "@/hooks/usePackageUsage";
 
 type AppointmentDetailsDrawerProps = {
   open: boolean;
@@ -33,6 +35,22 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
     pagination: { page: 1, perPage: 1000 },
   });
   const appointmentTypes = useAppointmentTypes();
+  
+  // Fetch payment package if linked
+  const { data: paymentPackages } = useGetList<PaymentPackage>("payment_packages", {
+    pagination: { page: 1, perPage: 1 },
+    filter: appointment?.payment_package_id ? { id: appointment.payment_package_id } : {},
+  }, { enabled: !!appointment?.payment_package_id });
+  
+  const paymentPackage = paymentPackages?.[0];
+  
+  // Fetch service for payment package
+  const { data: services } = useGetList<Service>("services", {
+    pagination: { page: 1, perPage: 1000 },
+  });
+  
+  // Get package usage if package exists
+  const { sessionsUsed, hoursUsed } = usePackageUsage(paymentPackage?.id);
 
   // Get all assigned staff from staff_ids array
   const assignedStaff = React.useMemo(() => {
@@ -42,15 +60,25 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
       .filter((s): s is Staff => s !== undefined);
   }, [staff, appointment?.staff_ids]);
   
-  // Find all appointment types - the database stores one type, but we should show all services that match
-  // Since multiple services can map to the same appointment_type, find all matching services
+  // Find selected appointment types - use selected_service_ids from custom_fields if available
+  // Otherwise fall back to showing all services that match the appointment_type
   const appointmentTypesList = React.useMemo(() => {
     if (!appointment?.appointment_type) return [];
     
-    // The database stores the mapped appointment_type (e.g., "doctor_on_call")
-    // Find all services that map to this appointment_type
+    // First, check if we have selected service IDs stored in custom_fields
+    const selectedServiceIds = appointment?.custom_fields?.selected_service_ids;
+    if (Array.isArray(selectedServiceIds) && selectedServiceIds.length > 0) {
+      // Show only the selected services
+      return appointmentTypes.filter((t) => {
+        const serviceType = t as any;
+        return selectedServiceIds.includes(serviceType.serviceId);
+      });
+    }
+    
+    // Fallback: The database stores the mapped appointment_type (e.g., "doctor_on_call")
+    // Find all services that map to this appointment_type (for backward compatibility)
     return appointmentTypes.filter((t) => t.appointmentType === appointment.appointment_type);
-  }, [appointmentTypes, appointment?.appointment_type]);
+  }, [appointmentTypes, appointment?.appointment_type, appointment?.custom_fields]);
   
   // For backward compatibility, also try to find by direct value match
   const appointmentType = React.useMemo(() => {
@@ -209,9 +237,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                 {status && (
                   <Badge
                     className={`${
-                      status.value === "confirmed"
-                        ? "bg-blue-100 text-blue-700"
-                        : status.value === "scheduled"
+                      status.value === "scheduled"
                         ? "bg-yellow-100 text-yellow-700"
                         : status.value === "cancelled"
                         ? "bg-red-100 text-red-700"
@@ -333,6 +359,73 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
               <p className="text-sm text-gray-600">Self Transport</p>
             )}
           </div>
+
+          {/* Payment Package */}
+          {paymentPackage && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <CreditCard className="w-5 h-5 text-gray-600" />
+                <h3 className="text-lg font-semibold">Payment Package</h3>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    {services && paymentPackage.service_id && (
+                      <p className="font-medium">
+                        {services.find((s) => s.id === paymentPackage.service_id)?.name || "Service"} Package #{paymentPackage.id}
+                      </p>
+                    )}
+                    {!paymentPackage.service_id && (
+                      <p className="font-medium">Package #{paymentPackage.id}</p>
+                    )}
+                  </div>
+                  <Badge
+                    className={
+                      paymentPackage.status === "active"
+                        ? "bg-green-100 text-green-700"
+                        : paymentPackage.status === "completed"
+                        ? "bg-gray-100 text-gray-700"
+                        : "bg-red-100 text-red-700"
+                    }
+                  >
+                    {paymentPackage.status}
+                  </Badge>
+                </div>
+                <div className="text-sm text-gray-600 space-y-1">
+                  {paymentPackage.package_type === "session-based" && paymentPackage.total_sessions && (
+                    <p>
+                      Usage: {sessionsUsed || 0} / {paymentPackage.total_sessions} sessions
+                      {paymentPackage.total_sessions > 0 && (
+                        <span className="ml-2">
+                          ({Math.round(((sessionsUsed || 0) / paymentPackage.total_sessions) * 100)}% used)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {paymentPackage.package_type === "time-based" && paymentPackage.total_hours && (
+                    <p>
+                      Usage: {hoursUsed || 0} / {paymentPackage.total_hours} hours
+                      {paymentPackage.total_hours > 0 && (
+                        <span className="ml-2">
+                          ({Math.round(((hoursUsed || 0) / paymentPackage.total_hours) * 100)}% used)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {paymentPackage.renewal_date && (
+                    <p>Renewal Date: {formatCrmDate(paymentPackage.renewal_date)}</p>
+                  )}
+                </div>
+                <Link
+                  to={`/payment_packages/${paymentPackage.id}/show`}
+                  className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View Package Details
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Notes and Instructions */}
           <div className="bg-gray-50 rounded-lg p-4">

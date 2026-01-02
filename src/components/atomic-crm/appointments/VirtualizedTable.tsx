@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
-import type { Appointment } from "../types";
+import type { Appointment, PaymentPackage, Service } from "../types";
 import { APPOINTMENT_STATUSES } from "./types";
 import { useGetList } from "ra-core";
 import type { Contact, Staff } from "../types";
 import { formatCrmDate } from "../misc/timezone";
+import { Link } from "react-router";
 
 type VirtualizedTableProps = {
   appointments: Appointment[];
@@ -34,6 +35,33 @@ export const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
   const { data: staffData } = useGetList<Staff>("staff", {
     pagination: { page: 1, perPage: 1000 },
   });
+  
+  // Get unique payment package IDs from appointments
+  const packageIds = useMemo(() => {
+    const ids = appointments
+      .map(a => a.payment_package_id)
+      .filter((id): id is number => id !== null && id !== undefined);
+    return [...new Set(ids)];
+  }, [appointments]);
+  
+  // Fetch payment packages
+  const { data: paymentPackages } = useGetList<PaymentPackage>("payment_packages", {
+    pagination: { page: 1, perPage: 1000 },
+    filter: packageIds.length > 0 ? { id: packageIds } : { id: [] },
+  }, { enabled: packageIds.length > 0 });
+  
+  const { data: services } = useGetList<Service>("services", {
+    pagination: { page: 1, perPage: 1000 },
+  });
+  
+  // Create a map for quick lookup
+  const packageMap = useMemo(() => {
+    const map = new Map<number, PaymentPackage>();
+    paymentPackages?.forEach(pkg => {
+      if (pkg.id) map.set(Number(pkg.id), pkg);
+    });
+    return map;
+  }, [paymentPackages]);
 
   const sortedAppointments = useMemo(() => {
     return [...appointments].sort((a, b) => {
@@ -88,7 +116,6 @@ export const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
     }
 
     const variantMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      confirmed: "default",
       scheduled: "secondary",
       cancelled: "destructive",
       completed: "default",
@@ -98,9 +125,7 @@ export const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
       <Badge
         variant={variantMap[status] || "outline"}
         className={`${
-          status === "confirmed"
-            ? "bg-[--success]/10 text-[--success]"
-            : status === "scheduled"
+          status === "scheduled"
             ? "bg-[--warning]/10 text-[--warning]"
             : status === "cancelled"
             ? "bg-[--error]/10 text-[--error]"
@@ -162,7 +187,7 @@ export const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
       <div className="overflow-x-auto">
         <div className="min-w-full">
           {/* Table Header */}
-          <div className="grid grid-cols-[150px_200px_150px_100px_120px_200px_100px] gap-4 px-4 py-3 border-b border-[--border] bg-[--muted]/50">
+          <div className="grid grid-cols-[150px_200px_150px_100px_120px_150px_200px_100px] gap-4 px-4 py-3 border-b border-[--border] bg-[--muted]/50">
             <div className="text-xs font-semibold text-[--muted-foreground] uppercase">
               Time
             </div>
@@ -177,6 +202,9 @@ export const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
             </div>
             <div className="text-xs font-semibold text-[--muted-foreground] uppercase">
               Status
+            </div>
+            <div className="text-xs font-semibold text-[--muted-foreground] uppercase">
+              Package
             </div>
             <div className="text-xs font-semibold text-[--muted-foreground] uppercase">
               Notes
@@ -245,7 +273,7 @@ export const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
                       height: `${virtualRow.size}px`,
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
-                    className="grid grid-cols-[150px_200px_150px_100px_120px_200px_100px] gap-4 px-4 py-3 border-b border-[--border] hover:bg-[--accent] cursor-pointer items-center"
+                    className="grid grid-cols-[150px_200px_150px_100px_120px_150px_200px_100px] gap-4 px-4 py-3 border-b border-[--border] hover:bg-[--accent] cursor-pointer items-center"
                     onClick={() => onAppointmentClick(appointment)}
                   >
                     {/* Time */}
@@ -282,6 +310,36 @@ export const VirtualizedTable: React.FC<VirtualizedTableProps> = ({
 
                     {/* Status */}
                     <div>{getStatusBadge(appointment.status)}</div>
+
+                    {/* Package */}
+                    <div>
+                      {appointment.payment_package_id ? (() => {
+                        const pkg = packageMap.get(Number(appointment.payment_package_id));
+                        if (!pkg) return <span className="text-xs text-[--muted-foreground]">Loading...</span>;
+                        const service = services?.find(s => s.id === pkg.service_id);
+                        const statusColors = {
+                          active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+                          completed: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+                          expired: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                        };
+                        return (
+                          <Link
+                            to={`/payment_packages/${pkg.id}/show`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-1 hover:underline"
+                          >
+                            <span className="text-xs text-[--foreground]">
+                              #{pkg.id}
+                            </span>
+                            <Badge className={`${statusColors[pkg.status] || statusColors.completed} text-xs`}>
+                              {pkg.status}
+                            </Badge>
+                          </Link>
+                        );
+                      })() : (
+                        <span className="text-xs text-[--muted-foreground]">-</span>
+                      )}
+                    </div>
 
                     {/* Notes */}
                     <div className="text-sm text-[--foreground] truncate">

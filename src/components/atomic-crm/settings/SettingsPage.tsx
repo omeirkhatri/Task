@@ -65,6 +65,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatCrmDateTime } from "../misc/timezone";
+import { PaymentSettingsSection } from "./PaymentSettingsSection";
 
 export const SettingsPage = () => {
   const [isEditMode, setEditMode] = useState(false);
@@ -107,11 +108,12 @@ export const SettingsPage = () => {
   return (
     <div className="max-w-6xl mx-auto mt-8 px-4">
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className={isAdministrator ? "grid w-full grid-cols-5" : "grid w-full grid-cols-4"}>
+        <TabsList className={isAdministrator ? "grid w-full grid-cols-6" : "grid w-full grid-cols-5"}>
           <TabsTrigger value="profile">My Info</TabsTrigger>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="tags">Tags</TabsTrigger>
           <TabsTrigger value="services">Services</TabsTrigger>
+          <TabsTrigger value="payments">Payment Settings</TabsTrigger>
           {isAdministrator && (
             <TabsTrigger value="users">Users</TabsTrigger>
           )}
@@ -133,6 +135,10 @@ export const SettingsPage = () => {
 
         <TabsContent value="services" className="mt-6">
           <ServicesManagementSection />
+        </TabsContent>
+
+        <TabsContent value="payments" className="mt-6">
+          <PaymentSettingsSection />
         </TabsContent>
 
         {isAdministrator && (
@@ -488,14 +494,117 @@ const ServicesManagementSection = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
   const [serviceName, setServiceName] = useState("");
+  const [serviceColor, setServiceColor] = useState("#3b82f6");
+  
+  // Color palette for services (expanded with unique colors, excluding blue/green/red used for status)
+  // Status colors to avoid: #3b82f6 (blue), #10b981 (green), #ef4444 (red)
+  const serviceColors = [
+    // Purples and Violets
+    "#a855f7", // purple
+    "#8b5cf6", // violet
+    "#c084fc", // purple-300
+    "#9333ea", // purple-600
+    "#7c3aed", // violet-600
+    "#6d28d9", // purple-700
+    "#a78bfa", // violet-400
+    "#8338ec", // electric purple
+    "#9370db", // medium purple
+    "#8a2be2", // blue violet
+    "#ba55d3", // medium orchid
+    "#da70d6", // orchid
+    
+    // Oranges and Corals
+    "#f97316", // orange
+    "#fb923c", // orange-400
+    "#f59e0b", // amber
+    "#fbbf24", // amber-400
+    "#fb7185", // rose-400
+    "#f87171", // red-400 (lighter, distinct from status red)
+    "#fa8b5c", // coral
+    "#ff6b35", // vibrant coral
+    "#fb5607", // bright orange
+    "#c2410c", // orange-700 (brownish)
+    "#ff6347", // tomato
+    "#ff4500", // orange red
+    "#ff8c00", // dark orange
+    "#ffa500", // orange
+    
+    // Pinks and Magentas
+    "#ec4899", // pink
+    "#f43f5e", // rose
+    "#f472b6", // pink-400
+    "#e879f9", // fuchsia-400
+    "#d946ef", // fuchsia-600
+    "#c026d3", // fuchsia-700
+    "#db2777", // pink-600
+    "#ff006e", // hot pink/magenta
+    "#ff1493", // deep pink
+    "#ff69b4", // hot pink
+    
+    // Cyans and Teals
+    "#06b6d4", // cyan
+    "#14b8a6", // teal
+    "#22d3ee", // sky
+    "#2dd4bf", // teal-400
+    "#0891b2", // cyan-600
+    "#0d9488", // teal-600
+    "#5eead4", // teal-300
+    "#67e8f9", // cyan-300
+    "#00ced1", // dark turquoise
+    "#48d1cc", // medium turquoise
+    "#40e0d0", // turquoise
+    
+    // Yellows and Golds
+    "#eab308", // yellow
+    "#facc15", // yellow-400
+    "#fde047", // yellow-300
+    "#ca8a04", // yellow-600
+    "#ffbe0b", // golden yellow
+    "#ffd700", // gold
+    
+    // Limes and Light Greens (distinct from status green #10b981)
+    "#84cc16", // lime
+    "#a3e635", // lime-400
+    "#65a30d", // lime-600
+    "#bef264", // lime-300
+    "#4ade80", // green-300 (lighter than status green)
+    "#22c55e", // green-500 (different shade)
+    "#06ffa5", // mint green
+    "#adff2f", // green yellow
+    "#7fff00", // chartreuse
+    "#00fa9a", // medium spring green
+    
+    // Indigos
+    "#6366f1", // indigo-500
+    "#818cf8", // indigo-400
+    "#4f46e5", // indigo-600
+    "#4338ca", // indigo-700
+    
+    // Slates and Grays
+    "#64748b", // slate-500
+    "#475569", // slate-600
+    "#94a3b8", // slate-400
+    "#334155", // slate-700
+    "#1e293b", // slate-800
+    
+    // Browns and Coppers
+    "#a16207", // amber-700 (brownish)
+    "#92400e", // amber-800
+    "#78350f", // amber-900
+    "#b45309", // amber-600
+    
+    // Unique Vibrant Colors (different from status colors)
+    "#3a86ff", // bright blue (different from status blue #3b82f6)
+  ];
 
   const handleCreate = async () => {
     if (!serviceName.trim()) {
       notify("Service name is required", { type: "error" });
       return;
     }
-    await create("services", { data: { name: serviceName.trim() } });
+    await create("services", { data: { name: serviceName.trim(), color: serviceColor } });
     setServiceName("");
+    setServiceColor("#3b82f6");
     setCreateDialogOpen(false);
     // Invalidate all services queries to refresh appointment types and other components
     queryClient.invalidateQueries({
@@ -509,6 +618,7 @@ const ServicesManagementSection = () => {
   const handleEditClick = (service: Service) => {
     setSelectedService(service);
     setServiceName(service.name);
+    setServiceColor(service.color || "#3b82f6");
     setEditDialogOpen(true);
   };
 
@@ -519,10 +629,11 @@ const ServicesManagementSection = () => {
     }
     await update("services", {
       id: selectedService.id,
-      data: { name: serviceName.trim() },
+      data: { name: serviceName.trim(), color: serviceColor },
       previousData: selectedService,
     });
     setServiceName("");
+    setServiceColor("#3b82f6");
     setSelectedService(null);
     setEditDialogOpen(false);
     // Invalidate all services queries to refresh appointment types and other components
@@ -561,7 +672,11 @@ const ServicesManagementSection = () => {
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>Services Management</CardTitle>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button onClick={() => {
+            setServiceName("");
+            setServiceColor("#3b82f6");
+            setCreateDialogOpen(true);
+          }}>
             <Plus className="h-4 w-4 mr-2" />
             Add Service
           </Button>
@@ -575,6 +690,7 @@ const ServicesManagementSection = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Color</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -582,6 +698,17 @@ const ServicesManagementSection = () => {
               {services.map((service) => (
                 <TableRow key={service.id}>
                   <TableCell>{service.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-6 rounded-full border-2 border-border"
+                        style={{ backgroundColor: service.color || "#3b82f6" }}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {service.color || "#3b82f6"}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
@@ -635,6 +762,32 @@ const ServicesManagementSection = () => {
                   }}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Color</Label>
+                <div className="flex flex-wrap gap-2">
+                  {serviceColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setServiceColor(color)}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        serviceColor === color
+                          ? "border-foreground scale-110 ring-2 ring-offset-2 ring-primary"
+                          : "border-border hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      aria-label={`Select color ${color}`}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <div
+                    className="w-6 h-6 rounded-full border border-border"
+                    style={{ backgroundColor: serviceColor }}
+                  />
+                  <span className="text-sm text-muted-foreground">{serviceColor}</span>
+                </div>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
@@ -673,6 +826,32 @@ const ServicesManagementSection = () => {
                   }}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Color</Label>
+                <div className="flex flex-wrap gap-2">
+                  {serviceColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setServiceColor(color)}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        serviceColor === color
+                          ? "border-foreground scale-110 ring-2 ring-offset-2 ring-primary"
+                          : "border-border hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      aria-label={`Select color ${color}`}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <div
+                    className="w-6 h-6 rounded-full border border-border"
+                    style={{ backgroundColor: serviceColor }}
+                  />
+                  <span className="text-sm text-muted-foreground">{serviceColor}</span>
+                </div>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button
@@ -681,6 +860,7 @@ const ServicesManagementSection = () => {
                   setEditDialogOpen(false);
                   setSelectedService(null);
                   setServiceName("");
+                  setServiceColor("#3b82f6");
                 }}
               >
                 Cancel

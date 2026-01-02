@@ -44,6 +44,13 @@ const navigationGroups = [
       { label: "Appointments", path: "/appointments", matchPattern: "/appointments" },
     ],
   },
+  {
+    label: "Payments",
+    items: [
+      { label: "Payment Packages", path: "/payment_packages", matchPattern: "/payment_packages/*" },
+      { label: "Payment Transactions", path: "/payment_transactions", matchPattern: "/payment_transactions/*" },
+    ],
+  },
 ];
 
 const Header = () => {

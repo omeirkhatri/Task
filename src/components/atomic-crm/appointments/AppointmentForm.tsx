@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { useGetList } from "ra-core";
-import type { Appointment, Contact, Staff, RecurrenceConfig } from "../types";
+import type { Appointment, Contact, Staff, RecurrenceConfig, PaymentPackage, Service } from "../types";
 import { APPOINTMENT_STATUSES } from "./types";
 import { useAppointmentTypes } from "./useAppointmentTypes";
 import { formatCrmTime, crmDateYmdInputString, extractCrmTime } from "../misc/timezone";
@@ -39,6 +39,7 @@ type AppointmentFormData = {
   primary_staff_id?: string;
   driver_id?: string;
   staff_ids?: string[]; // Already an array for multiple staff
+  payment_package_id?: string;
   // Recurrence fields
   is_recurring?: boolean;
   recurrence_pattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
@@ -66,9 +67,20 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
     pagination: { page: 1, perPage: 1000 },
   });
   const appointmentTypes = useAppointmentTypes();
+  const { data: services } = useGetList<Service>("services", {
+    pagination: { page: 1, perPage: 1000 },
+  });
   
   // Helper to convert appointment type to service IDs for form
-  const convertAppointmentTypeToServiceIds = React.useCallback((appointmentType: string | string[] | undefined): string[] => {
+  // Priority: Use selected_service_ids from custom_fields if available
+  const convertAppointmentTypeToServiceIds = React.useCallback((appointmentType: string | string[] | undefined, customFields?: Record<string, any>): string[] => {
+    // First, check if we have selected service IDs stored in custom_fields
+    const selectedServiceIds = customFields?.selected_service_ids;
+    if (Array.isArray(selectedServiceIds) && selectedServiceIds.length > 0) {
+      // Convert service IDs to service_ format
+      return selectedServiceIds.map(id => `service_${id}`);
+    }
+    
     if (!appointmentType) return [];
     const types = Array.isArray(appointmentType) ? appointmentType : [appointmentType];
     
@@ -100,7 +112,7 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
           start_time: extractCrmTime(appointment.start_time) || "",
           end_time: extractCrmTime(appointment.end_time) || "",
           duration_minutes: appointment.duration_minutes,
-          appointment_type: convertAppointmentTypeToServiceIds(appointment.appointment_type),
+          appointment_type: convertAppointmentTypeToServiceIds(appointment.appointment_type, appointment.custom_fields),
           status: appointment.status,
           notes: appointment.notes || "",
           mini_notes: appointment.mini_notes || "",
@@ -109,6 +121,7 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
           primary_staff_id: appointment.primary_staff_id?.toString() || "",
           driver_id: appointment.driver_id?.toString() || "",
           staff_ids: appointment.staff_ids?.map((id) => id.toString()) || [],
+          payment_package_id: appointment.payment_package_id?.toString() || "",
         }
       : (() => {
           // Use initialDateTime if provided, otherwise use current date/time
@@ -200,6 +213,46 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const [patientOpen, setPatientOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
   const selectedPatientId = watch("patient_id");
+  const selectedAppointmentTypes = watch("appointment_type") || [];
+  
+  // Fetch payment packages for selected patient
+  const { data: paymentPackages } = useGetList<PaymentPackage>("payment_packages", {
+    pagination: { page: 1, perPage: 1000 },
+    filter: selectedPatientId ? { patient_id: selectedPatientId, status: "active" } : {},
+    sort: { field: "created_at", order: "DESC" },
+  }, { enabled: !!selectedPatientId });
+  
+  // Create patients map for quick lookup
+  const patientsMap = useMemo(() => {
+    if (!patients) return new Map<number, Contact>();
+    return new Map(patients.map((p) => [Number(p.id), p]));
+  }, [patients]);
+
+  // Filter packages that match the selected appointment type/service
+  const availablePackages = useMemo(() => {
+    if (!paymentPackages || !services || selectedAppointmentTypes.length === 0) {
+      return [];
+    }
+    
+    // Get service IDs from selected appointment types
+    const serviceIds = selectedAppointmentTypes
+      .filter(type => type.startsWith("service_"))
+      .map(type => type.replace("service_", ""));
+    
+    // Also get services that match appointment types
+    const matchingServices = appointmentTypes
+      .filter(type => selectedAppointmentTypes.includes(type.value))
+      .map(type => type.serviceId?.toString())
+      .filter(Boolean);
+    
+    const allServiceIds = [...new Set([...serviceIds, ...matchingServices])];
+    
+    // Filter packages that have matching service_id or no service_id (for post-payment)
+    return paymentPackages.filter(pkg => {
+      if (!pkg.service_id) return true; // Post-payment packages can be linked to any appointment
+      return allServiceIds.includes(pkg.service_id.toString());
+    });
+  }, [paymentPackages, services, selectedAppointmentTypes, appointmentTypes]);
   
   // Filter patients based on search
   const filteredPatients = useMemo(() => {
@@ -284,6 +337,10 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
   }, [startTime, durationMinutes, setValue, watch]);
 
   const onFormSubmit = (data: AppointmentFormData) => {
+    // Convert "__none__" back to empty string for payment_package_id
+    if (data.payment_package_id === "__none__") {
+      data.payment_package_id = "";
+    }
     onSubmit(data);
   };
 
@@ -472,7 +529,17 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
               serviceId: type.serviceId,
             }))}
             selected={watch("appointment_type") || []}
-            onChange={(selected) => setValue("appointment_type", selected)}
+            onChange={(selected) => {
+              setValue("appointment_type", selected);
+              // Clear payment package if appointment type changes and package doesn't match
+              const currentPackageId = watch("payment_package_id");
+              if (currentPackageId && availablePackages.length > 0) {
+                const currentPackage = availablePackages.find(p => p.id.toString() === currentPackageId);
+                if (!currentPackage) {
+                  setValue("payment_package_id", "");
+                }
+              }
+            }}
             placeholder="Select types"
             className="h-9"
           />
@@ -501,6 +568,84 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
           </Select>
         </div>
       </div>
+
+      {/* Payment Package Link */}
+      {selectedPatientId && (
+        <div>
+          <Label htmlFor="payment_package_id" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
+            Link to Payment Package (Optional)
+          </Label>
+          <Select
+            value={watch("payment_package_id") || "__none__"}
+            onValueChange={(value) => {
+              if (value && value !== "__none__") {
+                const selectedPackage = availablePackages.find(p => p.id.toString() === value);
+                if (selectedPackage) {
+                  // Validate service type matches
+                  const packageService = services?.find(s => s.id === selectedPackage.service_id);
+                  if (packageService && selectedAppointmentTypes.length > 0) {
+                    const matches = selectedAppointmentTypes.some(type => {
+                      const serviceId = type.replace("service_", "");
+                      return serviceId === packageService.id.toString() || 
+                             appointmentTypes.some(at => at.value === type && at.serviceId === packageService.id);
+                    });
+                    if (!matches && selectedPackage.package_type !== "post-payment") {
+                      setValue("payment_package_id", "");
+                      alert(`This package is for ${packageService.name}, which doesn't match the selected appointment type.`);
+                      return;
+                    }
+                  }
+                  setValue("payment_package_id", value);
+                }
+              } else {
+                setValue("payment_package_id", "");
+              }
+            }}
+          >
+            <SelectTrigger className="h-9 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm">
+              <SelectValue placeholder="Select package (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">None</SelectItem>
+              {availablePackages.length > 0 ? (
+                availablePackages.map((pkg) => {
+                  // Get patient name
+                  const patient = patientsMap.get(Number(pkg.patient_id));
+                  const patientName = patient 
+                    ? `${patient.first_name} ${patient.last_name}`.trim()
+                    : `Patient #${pkg.patient_id}`;
+                  
+                  // Use package name if available, otherwise build from service
+                  const serviceName = services?.find(s => s.id === pkg.service_id)?.name || "Service";
+                  const packageName = (pkg as any).name || `${serviceName} Package`;
+                  
+                  // Build label: "Package Name - Patient Name - Status"
+                  const packageLabel = `${packageName} - ${patientName} - ${pkg.status}`;
+                  
+                  return (
+                    <SelectItem key={pkg.id} value={pkg.id.toString()}>
+                      {packageLabel}
+                    </SelectItem>
+                  );
+                })
+              ) : selectedAppointmentTypes.length > 0 ? (
+                <SelectGroup>
+                  <SelectLabel>No matching packages found</SelectLabel>
+                </SelectGroup>
+              ) : (
+                <SelectGroup>
+                  <SelectLabel>Select appointment type first</SelectLabel>
+                </SelectGroup>
+              )}
+            </SelectContent>
+          </Select>
+          {availablePackages.length > 0 && watch("payment_package_id") && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Package will be used to track usage for this appointment
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Row 4: Staff, Driver */}
       <div className="grid grid-cols-2 gap-3">

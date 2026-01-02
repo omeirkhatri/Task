@@ -20,7 +20,6 @@ type AppointmentFiltersProps = {
 
 const StatusIconMap: Record<string, React.ReactNode> = {
   scheduled: <Clock className="w-3 h-3" />,
-  confirmed: <CheckCircle className="w-3 h-3" />,
   completed: <CheckCircle className="w-3 h-3" />,
   cancelled: <XCircle className="w-3 h-3" />,
 };

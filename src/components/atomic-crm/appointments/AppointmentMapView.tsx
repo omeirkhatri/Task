@@ -32,7 +32,6 @@ const DEFAULT_ZOOM = 13;
 const STATUS_COLORS: Record<string, string> = {
   completed: "#10b981",
   cancelled: "#ef4444",
-  confirmed: "#3b82f6",
   scheduled: "#f59e0b",
 };
 

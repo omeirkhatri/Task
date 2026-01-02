@@ -357,10 +357,105 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
     patients: Contact[],
     allAppointments: Appointment[]
   ): EventInput | null => {
-    const appointmentType = appointmentTypes.find(
-      (type) => type.value === appointment.appointment_type
-    );
-    const color = appointmentType?.color || "#6b7280";
+    // Get color from selected service - use selected_service_ids from custom_fields if available
+    // This ensures we use the exact service color set in Services Management
+    let typeColor = "#a855f7"; // Default purple
+    let appointmentType: any = undefined; // Declare at function scope to use later
+    
+    // First, check if we have selected service IDs stored in custom_fields
+    const selectedServiceIds = appointment?.custom_fields?.selected_service_ids;
+    if (Array.isArray(selectedServiceIds) && selectedServiceIds.length > 0) {
+      // Use the first selected service's color
+      const firstServiceId = selectedServiceIds[0];
+      const selectedServiceType = appointmentTypes.find((t) => {
+        const serviceType = t as any;
+        // Compare as numbers to handle string/number mismatch
+        return serviceType.serviceId?.toString() === firstServiceId?.toString() ||
+               serviceType.serviceId === firstServiceId ||
+               serviceType.serviceId === Number(firstServiceId);
+      });
+      if (selectedServiceType) {
+        // Always set appointmentType if found, even if no color
+        appointmentType = selectedServiceType;
+        if (selectedServiceType.color) {
+          typeColor = selectedServiceType.color;
+        }
+      } else {
+        console.warn("Service type not found for selected service ID in createEvent:", {
+          appointmentId: appointment.id,
+          selectedServiceIds,
+          firstServiceId,
+          availableServiceIds: appointmentTypes.map(t => ({ 
+            serviceId: (t as any).serviceId, 
+            label: t.label,
+            color: t.color 
+          }))
+        });
+        // Fallback: Find appointment type by appointment_type field
+        appointmentType = appointmentTypes.find(
+          (type) => {
+            // Direct match
+            if (type.value === appointment.appointment_type) {
+              return true;
+            }
+            // Check if it's a service-based type with matching appointmentType
+            const serviceType = type as any;
+            if (serviceType.appointmentType === appointment.appointment_type) {
+              return true;
+            }
+            return false;
+          }
+        );
+        // Get color from found type
+        if (appointmentType?.color && appointmentType.color !== "#6b7280") {
+          typeColor = appointmentType.color;
+        }
+      }
+    } else {
+      // Fallback: Find appointment type by appointment_type field
+      appointmentType = appointmentTypes.find(
+        (type) => {
+          // Direct match
+          if (type.value === appointment.appointment_type) {
+            return true;
+          }
+          // Check if it's a service-based type with matching appointmentType
+          const serviceType = type as any;
+          if (serviceType.appointmentType === appointment.appointment_type) {
+            return true;
+          }
+          return false;
+        }
+      );
+      
+      // Get color from found type
+      if (appointmentType?.color && appointmentType.color !== "#6b7280") {
+        typeColor = appointmentType.color;
+      }
+    }
+    
+    // Status colors - used for background
+    // Make status check case-insensitive and handle variations
+    const statusLower = (appointment.status || "").toLowerCase().trim();
+    const STATUS_COLORS: Record<string, string> = {
+      scheduled: "#3b82f6", // Blue
+      completed: "#10b981", // Green
+      cancelled: "#ef4444", // Red
+      cancel: "#ef4444", // Alternative spelling
+      complete: "#10b981", // Alternative spelling
+    };
+    // Force explicit status color mapping - COMPLETED MUST BE GREEN
+    let statusColor = "#3b82f6"; // Default to blue (scheduled)
+    if (statusLower === "completed") {
+      statusColor = "#10b981"; // GREEN for completed - FORCE IT
+    } else if (statusLower === "cancelled" || statusLower === "cancel") {
+      statusColor = "#ef4444"; // RED for cancelled
+    } else if (statusLower === "scheduled") {
+      statusColor = "#3b82f6"; // BLUE for scheduled
+    } else {
+      // Fallback to mapped colors
+      statusColor = STATUS_COLORS[statusLower] || "#3b82f6";
+    }
 
     // Get patient name
     const patient = patients.find((p) => p.id === appointment.patient_id);
@@ -461,13 +556,19 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
       title,
       start: adjustedStart.toISOString(),
       end: adjustedEnd.toISOString(),
-      backgroundColor: color,
-      borderColor: color,
+      backgroundColor: statusColor, // Background color based on status
+      borderColor: "transparent", // No border
+      borderWidth: 0,
       textColor: "#ffffff",
       // Improve month view display
       display: 'block',
+      // Add data attribute for CSS targeting
+      classNames: [`appointment-status-${statusLower}`],
       extendedProps: {
         appointment,
+        statusColor,
+        typeColor,
+        appointmentStatus: appointment.status, // Store original status
       },
     };
   }, [appointmentTypes]);
@@ -850,6 +951,40 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           height: 100% !important;
           min-height: 750px !important;
         }
+        /* Dark grey background for days from other months */
+        .fc-day-other {
+          background-color: #e5e7eb !important; /* Light grey-200 in light mode */
+        }
+        .fc-day-other .fc-daygrid-day-number {
+          color: #9ca3af !important; /* Grey-400 */
+          opacity: 0.7 !important;
+        }
+        .fc-day-other .fc-event {
+          opacity: 0.6 !important;
+        }
+        /* Dark mode support for other month days - use a much darker, more contrasting color */
+        .dark .fc-day-other {
+          background-color: #0a0e14 !important; /* Very dark, almost black - much darker than current month */
+        }
+        .dark .fc-day-other .fc-daygrid-day-frame {
+          background-color: #0a0e14 !important;
+          border: 1px solid #1f2937 !important; /* Subtle border for extra distinction */
+        }
+        .dark .fc-day-other .fc-daygrid-day-number {
+          color: #4b5563 !important; /* Darker grey-600 for better contrast */
+          opacity: 0.6 !important;
+        }
+        .dark .fc-day-other .fc-event {
+          opacity: 0.4 !important; /* More muted events */
+        }
+        /* Ensure the day cell itself has the dark background */
+        .dark .fc-day-other.fc-daygrid-day {
+          background-color: #0a0e14 !important;
+        }
+        /* Also target the table cell */
+        .dark .fc-day-other td {
+          background-color: #0a0e14 !important;
+        }
         /* Orange highlight for today */
         .fc-day-today {
           background-color: rgba(249, 115, 22, 0.1) !important;
@@ -864,9 +999,9 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         .fc-timegrid-col.fc-day-today {
           background-color: rgba(249, 115, 22, 0.05) !important;
         }
-        /* Orange appointment badges for today */
+        /* Orange appointment badges for today - keep type color but add orange accent */
         .fc-day-today .fc-event {
-          border-left: 3px solid #f97316 !important;
+          box-shadow: 0 0 0 2px #f97316 !important;
         }
         /* Ensure events have proper background colors */
         .fc-daygrid-event,
@@ -878,23 +1013,60 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           opacity: 1 !important;
           transition: background-color 0.2s ease, border-color 0.2s ease !important;
         }
-        /* Ensure background colors are applied and visible */
+        /* Ensure background colors are applied and visible - no borders */
+        /* DO NOT override backgroundColor - let FullCalendar use the backgroundColor property from events */
         .fc-event {
-          background-color: var(--fc-event-bg-color) !important;
-          border-color: var(--fc-event-border-color) !important;
+          border: none !important;
+          border-radius: 4px !important;
         }
-        /* Hover effect - turn blue when highlighted */
-        .fc-event:hover,
-        .fc-event.fc-event-selected,
-        .fc-list-event:hover,
-        .fc-list-event.fc-event-selected {
-          background-color: #3b82f6 !important;
-          border-color: #3b82f6 !important;
+        /* Force background color based on status class */
+        .fc-event.appointment-status-completed {
+          background-color: #10b981 !important;
         }
-        /* List view title cell hover */
-        .fc-list-event:hover .fc-list-event-title,
-        .fc-list-event.fc-event-selected .fc-list-event-title {
+        .fc-event.appointment-status-cancelled,
+        .fc-event.appointment-status-cancel {
+          background-color: #ef4444 !important;
+        }
+        .fc-event.appointment-status-scheduled {
           background-color: #3b82f6 !important;
+        }
+        /* Hover effect - darken the base color instead of turning blue */
+        .fc-event.appointment-status-completed:hover,
+        .fc-event.appointment-status-completed.fc-event-selected {
+          background-color: #059669 !important; /* Dark green */
+          border-color: #059669 !important;
+        }
+        .fc-event.appointment-status-cancelled:hover,
+        .fc-event.appointment-status-cancelled.fc-event-selected,
+        .fc-event.appointment-status-cancel:hover,
+        .fc-event.appointment-status-cancel.fc-event-selected {
+          background-color: #dc2626 !important; /* Dark red */
+          border-color: #dc2626 !important;
+        }
+        .fc-event.appointment-status-scheduled:hover,
+        .fc-event.appointment-status-scheduled.fc-event-selected {
+          background-color: #2563eb !important; /* Dark blue */
+          border-color: #2563eb !important;
+        }
+        /* Generic hover for events without status class - darken using filter */
+        .fc-event:hover:not(.appointment-status-completed):not(.appointment-status-cancelled):not(.appointment-status-cancel):not(.appointment-status-scheduled),
+        .fc-event.fc-event-selected:not(.appointment-status-completed):not(.appointment-status-cancelled):not(.appointment-status-cancel):not(.appointment-status-scheduled) {
+          filter: brightness(0.85) !important;
+        }
+        /* List view title cell hover - match the event color */
+        .fc-list-event.appointment-status-completed:hover .fc-list-event-title,
+        .fc-list-event.appointment-status-completed.fc-event-selected .fc-list-event-title {
+          background-color: #059669 !important; /* Dark green */
+        }
+        .fc-list-event.appointment-status-cancelled:hover .fc-list-event-title,
+        .fc-list-event.appointment-status-cancelled.fc-event-selected .fc-list-event-title,
+        .fc-list-event.appointment-status-cancel:hover .fc-list-event-title,
+        .fc-list-event.appointment-status-cancel.fc-event-selected .fc-list-event-title {
+          background-color: #dc2626 !important; /* Dark red */
+        }
+        .fc-list-event.appointment-status-scheduled:hover .fc-list-event-title,
+        .fc-list-event.appointment-status-scheduled.fc-event-selected .fc-list-event-title {
+          background-color: #2563eb !important; /* Dark blue */
         }
         .fc-daygrid-event .fc-event-title,
         .fc-list-event .fc-event-title,
@@ -933,19 +1105,42 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
         .fc-list-event-graphic {
           background-color: transparent !important;
         }
-        /* When row is hovered, entire row and title cell turn blue */
-        .fc-list-event:hover,
-        .fc-list-event.fc-event-selected {
-          background-color: #3b82f6 !important;
+        /* When row is hovered, darken based on status */
+        .fc-list-event.appointment-status-completed:hover,
+        .fc-list-event.appointment-status-completed.fc-event-selected {
+          background-color: #059669 !important; /* Dark green */
         }
-        .fc-list-event:hover .fc-list-event-title,
-        .fc-list-event.fc-event-selected .fc-list-event-title {
-          background-color: #3b82f6 !important;
+        .fc-list-event.appointment-status-cancelled:hover,
+        .fc-list-event.appointment-status-cancelled.fc-event-selected,
+        .fc-list-event.appointment-status-cancel:hover,
+        .fc-list-event.appointment-status-cancel.fc-event-selected {
+          background-color: #dc2626 !important; /* Dark red */
         }
-        /* Time column stays blue with white text even on hover */
-        .fc-list-event:hover .fc-list-event-time,
-        .fc-list-event.fc-event-selected .fc-list-event-time {
-          background-color: #3b82f6 !important;
+        .fc-list-event.appointment-status-scheduled:hover,
+        .fc-list-event.appointment-status-scheduled.fc-event-selected {
+          background-color: #2563eb !important; /* Dark blue */
+        }
+        /* Generic hover for list events without status class */
+        .fc-list-event:hover:not(.appointment-status-completed):not(.appointment-status-cancelled):not(.appointment-status-cancel):not(.appointment-status-scheduled),
+        .fc-list-event.fc-event-selected:not(.appointment-status-completed):not(.appointment-status-cancelled):not(.appointment-status-cancel):not(.appointment-status-scheduled) {
+          filter: brightness(0.85) !important;
+        }
+        /* Time column darkens to match status on hover */
+        .fc-list-event.appointment-status-completed:hover .fc-list-event-time,
+        .fc-list-event.appointment-status-completed.fc-event-selected .fc-list-event-time {
+          background-color: #059669 !important; /* Dark green */
+          color: #ffffff !important;
+        }
+        .fc-list-event.appointment-status-cancelled:hover .fc-list-event-time,
+        .fc-list-event.appointment-status-cancelled.fc-event-selected .fc-list-event-time,
+        .fc-list-event.appointment-status-cancel:hover .fc-list-event-time,
+        .fc-list-event.appointment-status-cancel.fc-event-selected .fc-list-event-time {
+          background-color: #dc2626 !important; /* Dark red */
+          color: #ffffff !important;
+        }
+        .fc-list-event.appointment-status-scheduled:hover .fc-list-event-time,
+        .fc-list-event.appointment-status-scheduled.fc-event-selected .fc-list-event-time {
+          background-color: #2563eb !important; /* Dark blue */
           color: #ffffff !important;
         }
       `}</style>
@@ -983,6 +1178,8 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
           height="100%"
           headerToolbar={false}
           locale="en-GB"
+          fixedWeekCount={false}
+          showNonCurrentDates={true}
           dayHeaderFormat={(arg: any) => {
             try {
               // Get view type from calendar API if available, otherwise use state
@@ -1065,6 +1262,60 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
             const view = eventInfo.view;
             const isMonthView = view.type === 'dayGridMonth';
             
+            // First, check if we have selected service IDs stored in custom_fields
+            // Declare once at the top to use in both month and week/day/list views
+            const selectedServiceIds = appointment?.custom_fields?.selected_service_ids;
+            
+            // Get typeColor from selected service - use selected_service_ids from custom_fields if available
+            // This ensures we use the exact service color set in Services Management
+            let typeColor = "#a855f7"; // Default purple
+            if (Array.isArray(selectedServiceIds) && selectedServiceIds.length > 0) {
+              // Use the first selected service's color
+              const firstServiceId = selectedServiceIds[0];
+              const selectedServiceType = appointmentTypes.find((t) => {
+                const serviceType = t as any;
+                // Compare as numbers to handle string/number mismatch
+                return serviceType.serviceId?.toString() === firstServiceId?.toString() ||
+                       serviceType.serviceId === firstServiceId ||
+                       serviceType.serviceId === Number(firstServiceId);
+              });
+              if (selectedServiceType?.color) {
+                typeColor = selectedServiceType.color;
+              } else {
+                console.warn("Service type not found for selected service ID:", {
+                  appointmentId: appointment.id,
+                  selectedServiceIds,
+                  firstServiceId,
+                  availableServiceIds: appointmentTypes.map(t => ({ 
+                    serviceId: (t as any).serviceId, 
+                    label: t.label,
+                    color: t.color 
+                  }))
+                });
+              }
+            } else {
+              // Fallback: Match by appointment_type to find the service
+              const appointmentType = appointmentTypes.find(
+                (type) => {
+                  // Services are stored with value="service_${id}" and appointmentType="doctor_on_call" etc.
+                  const serviceType = type as any;
+                  if (serviceType.appointmentType === appointment.appointment_type) {
+                    return true;
+                  }
+                  // Also check direct value match (for backwards compatibility)
+                  if (type.value === appointment.appointment_type) {
+                    return true;
+                  }
+                  return false;
+                }
+              );
+              
+              // Use color from service database (set in Services Management)
+              if (appointmentType?.color && appointmentType.color !== "#6b7280" && appointmentType.color !== "") {
+                typeColor = appointmentType.color;
+              }
+            }
+            
             // For month view, show a more compact but readable format
             if (isMonthView) {
               // Use the original appointment start_time directly to avoid double timezone conversion
@@ -1093,15 +1344,26 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
                     e.preventDefault();
                     handleEventRightClick(e, appointment);
                   }}
-                  className="px-2 py-1 w-full"
+                  className="px-0 py-1 w-full h-full"
                   style={{
                     minHeight: '24px',
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'stretch',
                   }}
                 >
-                  <div 
-                    className="flex items-center gap-1.5 w-full"
+                  {/* Left colored section for appointment type - wider and more visible */}
+                  <div
+                    style={{
+                      width: '8px',
+                      backgroundColor: typeColor,
+                      flexShrink: 0,
+                      borderRadius: '4px 0 0 4px',
+                      opacity: 1,
+                    }}
+                  />
+                  {/* Content section */}
+                  <div
+                    className="px-2 flex items-center gap-1.5 flex-1"
                     style={{
                       color: '#ffffff',
                       fontSize: '11px',
@@ -1119,18 +1381,72 @@ export const AppointmentCalendar: React.FC<AppointmentCalendarProps> = ({
               );
             }
             
-            // For week/day/list views, show full details
+            // For week/day/list views, show full details with type color indicator
+            // Get typeColor from selected service - use selected_service_ids from custom_fields if available
+            let typeColorForView = "#a855f7"; // Default purple
+            
+            // Reuse selectedServiceIds already declared at the top of the function
+            if (Array.isArray(selectedServiceIds) && selectedServiceIds.length > 0) {
+              // Use the first selected service's color
+              const firstServiceId = selectedServiceIds[0];
+              const selectedServiceType = appointmentTypes.find((t) => {
+                const serviceType = t as any;
+                // Compare as numbers to handle string/number mismatch
+                return serviceType.serviceId?.toString() === firstServiceId?.toString() ||
+                       serviceType.serviceId === firstServiceId ||
+                       serviceType.serviceId === Number(firstServiceId);
+              });
+              if (selectedServiceType?.color) {
+                typeColorForView = selectedServiceType.color;
+              }
+            } else {
+              // Fallback: Use color from extendedProps or find by appointment_type
+              typeColorForView = eventInfo.event.extendedProps.typeColor;
+              if (!typeColorForView || typeColorForView === "#6b7280" || typeColorForView === "") {
+                const appointmentType = appointmentTypes.find(
+                  (type) => {
+                    if (type.value === appointment.appointment_type) return true;
+                    const serviceType = type as any;
+                    if (type.value?.startsWith("service_") && serviceType.appointmentType === appointment.appointment_type) {
+                      return true;
+                    }
+                    return false;
+                  }
+                );
+                // Use color from service database field
+                typeColorForView = appointmentType?.color || "#a855f7";
+              }
+            }
+            
             return (
               <div
                 onContextMenu={(e) => {
                   e.preventDefault();
                   handleEventRightClick(e, appointment);
                 }}
-                className="p-1 text-xs w-full"
+                className="px-0 py-1 w-full h-full"
+                style={{
+                  display: 'flex',
+                  alignItems: 'stretch',
+                }}
               >
-                <div 
-                  className="font-bold text-white"
+                {/* Left colored section for appointment type - wider and more visible */}
+                <div
                   style={{
+                    width: '8px',
+                    backgroundColor: typeColorForView,
+                    flexShrink: 0,
+                    borderRadius: '4px 0 0 4px',
+                    opacity: 1,
+                  }}
+                />
+                {/* Content section */}
+                <div
+                  className="px-2 flex items-center flex-1"
+                  style={{
+                    color: '#ffffff',
+                    fontSize: '11px',
+                    fontWeight: '600',
                     textShadow: '0 1px 2px rgba(0,0,0,0.5)',
                   }}
                 >

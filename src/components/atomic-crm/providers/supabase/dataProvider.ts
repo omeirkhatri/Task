@@ -169,6 +169,55 @@ const dataProviderWithCustomMethods = {
   ...baseDataProvider,
   async getList(resource: string, params: GetListParams) {
     const mappedResource = mapResourceName(resource);
+    
+    // Debug: log payment_packages queries
+    if (mappedResource === "payment_packages") {
+      console.log("PaymentPackages getList - params:", JSON.stringify(params, null, 2));
+    }
+    
+    // Debug: log payment_transactions queries
+    if (mappedResource === "payment_transactions") {
+      console.log("PaymentTransactions getList - resource:", resource, "mappedResource:", mappedResource);
+      console.log("PaymentTransactions getList - params:", JSON.stringify(params, null, 2));
+    }
+    
+    // Handle overdue installments filter for payment_packages
+    if (mappedResource === "payment_packages" && params.filter && (params.filter as any).overdue_installments === true) {
+      try {
+        const today = new Date().toISOString().split("T")[0];
+        // Get package IDs that have overdue installments
+        const { data: overdueInstallments, error } = await supabase
+          .from("installment_schedules")
+          .select("payment_package_id")
+          .eq("is_paid", false)
+          .lt("due_date", today);
+
+        if (error) throw error;
+
+        const packageIds = overdueInstallments
+          ? [...new Set(overdueInstallments.map((i) => i.payment_package_id))]
+          : [];
+
+        // Remove the custom filter and add id filter
+        const { overdue_installments, ...restFilter } = params.filter as any;
+        if (packageIds.length > 0) {
+          params.filter = {
+            ...restFilter,
+            id: packageIds,
+          };
+        } else {
+          // No overdue installments, return empty result
+          params.filter = {
+            ...restFilter,
+            id: [], // Empty array will return no results
+          };
+        }
+      } catch (error) {
+        logger.error("Error filtering overdue installments", { error });
+        // Fall through to normal filtering
+      }
+    }
+    
     const lastSeenRanges =
       params.filter && Array.isArray((params.filter as any).last_seen_ranges)
         ? ((params.filter as any).last_seen_ranges as RangeFilter[])
@@ -613,6 +662,7 @@ const dataProviderWithCustomMethods = {
         const recurrenceId = crypto.randomUUID();
         
         // Prepare base appointment data for generation
+        // Include payment_package_id so it propagates to all recurring instances
         const baseAppointment = {
           patient_id: appointmentData.patient_id,
           appointment_date: appointmentData.appointment_date,
@@ -627,6 +677,7 @@ const dataProviderWithCustomMethods = {
           pickup_instructions: appointmentData.pickup_instructions || null,
           primary_staff_id: appointmentData.primary_staff_id || null,
           driver_id: appointmentData.driver_id || null,
+          payment_package_id: appointmentData.payment_package_id || null,
         };
         
         // Generate all appointment instances
@@ -908,6 +959,108 @@ const dataProviderWithCustomMethods = {
               logger.warn("Error logging archive/unarchive", { error });
             }
           }
+        }
+      }
+    }
+    
+    // Handle recurring appointment updates
+    if (mappedResource === "appointments" && params.data && params.id) {
+      const updateFutureOnly = (params.meta as any)?.updateFutureOnly || false;
+      
+      // Fetch the current appointment to check if it's recurring
+      const { data: currentAppointment } = await supabase
+        .from("appointments")
+        .select("*")
+        .eq("id", params.id)
+        .maybeSingle();
+      
+      if (currentAppointment) {
+        const isRecurring = currentAppointment.is_recurring || currentAppointment.recurrence_id;
+        
+        if (isRecurring && updateFutureOnly) {
+          // Update this appointment and all future appointments in the series
+          const recurrenceId = currentAppointment.recurrence_id;
+          const appointmentStartTime = currentAppointment.start_time;
+          
+          // Find all appointments with same recurrence_id and start_time >= this appointment's start_time
+          const { data: futureAppointments } = await supabase
+            .from("appointments")
+            .select("id, patient_id, start_time, appointment_type")
+            .eq("recurrence_id", recurrenceId)
+            .gte("start_time", appointmentStartTime);
+          
+          const appointmentsToUpdate = futureAppointments || [];
+          
+          // Prepare update data - preserve dates, only update other fields
+          const updateData: Record<string, any> = { ...params.data };
+          
+          // For each future appointment, preserve its original date but update other fields
+          for (const futureAppt of appointmentsToUpdate) {
+            // Get the original date/time for this appointment
+            const originalStartTime = futureAppt.start_time;
+            const originalEndTime = futureAppt.end_time;
+            const originalDate = originalStartTime ? originalStartTime.split("T")[0] : null;
+            
+            // Extract time from the update data (if provided)
+            let newStartTime = updateData.start_time;
+            let newEndTime = updateData.end_time;
+            
+            if (newStartTime && originalDate) {
+              // Preserve the original date, but use the new time
+              const timePart = newStartTime.includes("T") ? newStartTime.split("T")[1] : newStartTime;
+              newStartTime = `${originalDate}T${timePart}`;
+            } else if (originalStartTime) {
+              // Keep original time if no new time provided
+              newStartTime = originalStartTime;
+            }
+            
+            if (newEndTime && originalDate) {
+              // Preserve the original date, but use the new time
+              const timePart = newEndTime.includes("T") ? newEndTime.split("T")[1] : newEndTime;
+              newEndTime = `${originalDate}T${timePart}`;
+            } else if (originalEndTime) {
+              // Keep original time if no new time provided
+              newEndTime = originalEndTime;
+            }
+            
+            // Create update data with preserved date
+            const futureUpdateData: Record<string, any> = {
+              ...updateData,
+              appointment_date: originalDate || updateData.appointment_date,
+              start_time: newStartTime || updateData.start_time,
+              end_time: newEndTime || updateData.end_time,
+            };
+            
+            // Remove staff_ids from update data - it's handled separately
+            delete futureUpdateData.staff_ids;
+            
+            // Update this future appointment
+            try {
+              await baseDataProvider.update(mappedResource, {
+                id: futureAppt.id,
+                data: futureUpdateData,
+                previousData: futureAppt as any,
+              });
+            } catch (updateError) {
+              logger.error(`Error updating future appointment ${futureAppt.id}`, updateError, { context: "dataProvider" });
+              // Continue updating other appointments even if one fails
+            }
+          }
+          
+          // Store future appointment IDs for staff assignment handling
+          const futureAppointmentIds = appointmentsToUpdate.map(apt => apt.id);
+          
+          // Update the current appointment and return result with future appointment IDs
+          const result = await baseDataProvider.update(mappedResource, params);
+          
+          // Add future appointment IDs to the result
+          return {
+            ...result,
+            meta: {
+              ...result.meta,
+              futureAppointmentIds,
+            },
+          };
         }
       }
     }
@@ -1284,6 +1437,109 @@ const dataProviderWithCustomMethods = {
     // FIXME this should be done in a lambda function using a transaction instead
     return mergeContacts(sourceId, targetId, baseDataProvider);
   },
+  async getOverdueInstallments() {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("installment_schedules")
+        .select(`
+          *,
+          payment_packages!inner(*)
+        `)
+        .eq("is_paid", false)
+        .lt("due_date", today)
+        .order("due_date", { ascending: true });
+
+      if (error) throw error;
+
+      return {
+        data: data || [],
+        total: data?.length || 0,
+      };
+    } catch (error) {
+      logger.error("getOverdueInstallments.error", error, { context: "dataProvider" });
+      throw error;
+    }
+  },
+  async linkAppointmentToPackage(appointmentId: Identifier, packageId: Identifier) {
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .update({ payment_package_id: packageId })
+        .eq("id", appointmentId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { data };
+    } catch (error) {
+      logger.error("linkAppointmentToPackage.error", error, { context: "dataProvider", appointmentId, packageId });
+      throw error;
+    }
+  },
+  async getPackageUsage(packageId: Identifier) {
+    // Alias for calculatePackageUsage for consistency
+    return this.calculatePackageUsage(packageId);
+  },
+  async renewPackage(packageId: Identifier, newParams: any) {
+    try {
+      // Get the old package
+      const { data: oldPackage, error: getError } = await supabase
+        .from("payment_packages")
+        .select("*")
+        .eq("id", packageId)
+        .single();
+
+      if (getError || !oldPackage) throw getError || new Error("Package not found");
+
+      // Create new package with new parameters
+      const { data: newPackage, error: createError } = await supabase
+        .from("payment_packages")
+        .insert({
+          ...oldPackage,
+          ...newParams,
+          id: undefined, // Let database generate new ID
+          renewed_from_package_id: packageId,
+          status: "active",
+          created_at: undefined,
+          updated_at: undefined,
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      // Mark old package as completed
+      const { error: updateError } = await supabase
+        .from("payment_packages")
+        .update({ status: "completed" })
+        .eq("id", packageId);
+
+      if (updateError) throw updateError;
+
+      return { data: newPackage };
+    } catch (error) {
+      logger.error("renewPackage.error", error, { context: "dataProvider", packageId, newParams });
+      throw error;
+    }
+  },
+  async calculatePackageUsage(packageId: Identifier) {
+    // Call the database function to calculate package usage
+    const { data, error } = await supabase.rpc('calculate_package_usage', {
+      package_id: packageId,
+    });
+
+    if (error) {
+      logger.error("calculatePackageUsage.error", error, { context: "dataProvider", packageId });
+      throw new Error(`Failed to calculate package usage: ${error.message}`);
+    }
+
+    // The function returns JSONB with sessions_used and hours_used
+    return {
+      sessionsUsed: Number(data?.sessions_used || 0),
+      hoursUsed: Number(data?.hours_used || 0),
+    };
+  },
 } satisfies DataProvider;
 
 export type CrmDataProvider = typeof dataProviderWithCustomMethods;
@@ -1401,6 +1657,78 @@ export const dataProvider = withLifecycleCallbacks(
           "last_name",
           "email",
         ], { useFtsSuffix: false })(params);
+      },
+    },
+    {
+      resource: "payment_transactions",
+      afterCreate: async (result, dataProvider) => {
+        const transaction = result.data;
+        
+        // If payment has installment_number, mark the corresponding installment as paid
+        if (transaction.installment_number && transaction.payment_package_id) {
+          try {
+            // Find the installment schedule record
+            const { data: installments } = await supabase
+              .from("installment_schedules")
+              .select("*")
+              .eq("payment_package_id", transaction.payment_package_id)
+              .eq("installment_number", transaction.installment_number)
+              .eq("is_paid", false)
+              .maybeSingle();
+
+            if (installments) {
+              // Check if amount matches (with some tolerance for rounding)
+              const amountDifference = Math.abs(installments.amount_due - transaction.amount_received);
+              const tolerance = 0.01; // Allow 1 cent difference for rounding
+
+              if (amountDifference <= tolerance) {
+                // Mark installment as paid
+                await supabase
+                  .from("installment_schedules")
+                  .update({
+                    is_paid: true,
+                    paid_date: transaction.date_paid || transaction.date_received || new Date().toISOString().split("T")[0],
+                  })
+                  .eq("id", installments.id);
+
+                logger.info(`Marked installment ${transaction.installment_number} as paid for package ${transaction.payment_package_id}`);
+              } else {
+                logger.warn(
+                  `Payment amount (${transaction.amount_received}) doesn't match installment amount (${installments.amount_due}) for package ${transaction.payment_package_id}, installment ${transaction.installment_number}`
+                );
+              }
+            }
+          } catch (error) {
+            logger.error(`Failed to mark installment as paid for transaction ${transaction.id}`, { error });
+            // Don't throw - transaction is already created
+          }
+        }
+
+        return result;
+      },
+    },
+    {
+      resource: "payment_packages",
+      beforeGetList: async (params) => {
+        // Remove empty search query - payment_packages doesn't have text search columns
+        if (params.filter && "q" in params.filter) {
+          const filter = params.filter as any;
+          const q = filter.q;
+          // Remove empty or whitespace-only search queries
+          if (q === undefined || q === null || q === "" || (typeof q === "string" && q.trim() === "")) {
+            const { q: _, ...restFilter } = filter;
+            params.filter = restFilter;
+          }
+          // Note: We don't apply full-text search here because payment_packages
+          // doesn't have searchable text columns. Users can filter by patient, service, status, etc.
+        }
+        // Debug: log the filter to see what's being sent
+        console.log("PaymentPackages beforeGetList - filter:", params.filter);
+        return params;
+      },
+      afterCreate: async (result, dataProvider) => {
+        // No automatic installment creation - payments are flexible
+        return result;
       },
     },
   ],

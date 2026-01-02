@@ -28,6 +28,7 @@ import { NotesPage } from "../notes/NotesPage";
 import { SettingsPage } from "../settings/SettingsPage";
 import { TasksPage } from "../tasks/TasksPage";
 import { AppointmentsPage } from "../appointments/AppointmentsPage";
+import paymentPackages, { paymentTransactions } from "../payments";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
 import { ConfigurationProvider } from "./ConfigurationContext";
 import {
@@ -178,6 +179,8 @@ export const CRM = ({
         <Resource name="services" {...servicesResource} />
         <Resource name="staff" options={{ label: "Staff" }} {...staff} />
         <Resource name="tags" />
+        <Resource name="payment_packages" options={{ label: "Payment Packages" }} {...paymentPackages} />
+        <Resource name="payment_transactions" options={{ label: "Payment Transactions" }} {...paymentTransactions} />
       </Admin>
     </ConfigurationProvider>
   );

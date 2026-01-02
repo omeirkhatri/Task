@@ -27,6 +27,8 @@ import { Task as TaskComponent } from "../tasks/Task";
 import { AddTask } from "../tasks/AddTask";
 import { UnifiedNotesIterator } from "../notes/UnifiedNotesIterator";
 import { ActivityLog } from "../activity/ActivityLog";
+import { Badge } from "@/components/ui/badge";
+import { DateField } from "@/components/admin/date-field";
 import {
   crmAddDays,
   crmEndOfDay,
@@ -203,7 +205,7 @@ const ContactShowContent = () => {
 
   const defaultTab = (() => {
     const tab = new URLSearchParams(location.search).get("tab");
-    if (tab === "notes" || tab === "quotes" || tab === "tasks" || tab === "activity") {
+    if (tab === "notes" || tab === "quotes" || tab === "tasks" || tab === "activity" || tab === "packages") {
       return tab;
     }
     return "activity";
@@ -443,3 +445,4 @@ const ContactShowContent = () => {
     </div>
   );
 };
+

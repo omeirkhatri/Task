@@ -91,8 +91,8 @@ export const useAppointmentTypes = (): AppointmentTypeConfig[] => {
         ? mappedType 
         : ALLOWED_APPOINTMENT_TYPES[0];
       
-      // Get color from map or use default color based on index
-      const color = SERVICE_COLOR_MAP[serviceNameLower] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+      // Get color from database first, then fallback to map or default
+      const color = service.color || SERVICE_COLOR_MAP[serviceNameLower] || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
 
       return {
         value: `service_${service.id}`, // Use service ID as unique value

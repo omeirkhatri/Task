@@ -34,7 +34,6 @@ export const APPOINTMENT_TYPES: AppointmentTypeConfig[] = [
 
 export const APPOINTMENT_STATUSES: StatusConfig[] = [
   { value: "scheduled", label: "Scheduled", color: "#f59e0b", icon: "Clock" },
-  { value: "confirmed", label: "Confirmed", color: "#3b82f6", icon: "CheckCircle" },
   { value: "completed", label: "Completed", color: "#10b981", icon: "CheckCircle" },
   { value: "cancelled", label: "Cancelled", color: "#ef4444", icon: "XCircle" },
 ];

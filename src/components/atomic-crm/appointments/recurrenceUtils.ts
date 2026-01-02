@@ -15,6 +15,7 @@ export interface BaseAppointmentData {
   pickup_instructions?: string | null;
   primary_staff_id?: number | null;
   driver_id?: number | null;
+  payment_package_id?: number | null;
 }
 
 export interface GeneratedAppointment extends BaseAppointmentData {
@@ -107,6 +108,8 @@ export function generateRecurringAppointments(
       
       // Generate appointments for all selected days in this week
       let foundAnyInWeek = false;
+      let skippedBaseDateInWeek0 = false;
+      
       for (const targetDayOfWeek of sortedDaysOfWeek) {
         // Check BEFORE processing if we've exceeded max occurrences
         if (maxOccurrences !== null && appointments.length >= maxOccurrences) {
@@ -120,6 +123,7 @@ export function generateRecurringAppointments(
         // In week 0, skip the base date (already added as parent) and only include days >= base date
         if (weekOffset === 0) {
           if (targetDayOfWeek === baseDayOfWeek) {
+            skippedBaseDateInWeek0 = true; // Mark that we skipped the base date
             continue; // Skip base date, already added
           }
           if (isBefore(targetDate, baseStartDate)) {
@@ -163,8 +167,18 @@ export function generateRecurringAppointments(
         break;
       }
       
-      // If we didn't find any valid dates in this week, we're done
+      // If we didn't find any valid dates in this week, check if we skipped the base date in week 0
+      // If so, we should continue to next week (the parent appointment counts as week 0)
       if (!foundAnyInWeek) {
+        if (weekOffset === 0 && skippedBaseDateInWeek0) {
+          // Week 0 had the base date which was already added as parent, so continue to next week
+          // But only if we haven't reached max occurrences yet
+          if (maxOccurrences === null || appointments.length < maxOccurrences) {
+            weekOffset++;
+            continue;
+          }
+        }
+        // Otherwise, we're done
         break;
       }
       

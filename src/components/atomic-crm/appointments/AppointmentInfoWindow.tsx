@@ -25,11 +25,6 @@ const STATUS_BADGES: Record<string, { bg: string; text: string; icon: string }> 
     text: "#ef4444",
     icon: "✕",
   },
-  confirmed: {
-    bg: "#eff6ff",
-    text: "#3b82f6",
-    icon: "✓",
-  },
   scheduled: {
     bg: "#fffbeb",
     text: "#f59e0b",

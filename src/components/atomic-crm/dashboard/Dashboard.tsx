@@ -6,6 +6,10 @@ import { RecentLeads } from "./RecentLeads";
 import { LeadStatusChart } from "./LeadStatusChart";
 import { TasksList } from "./TasksList";
 import { Welcome } from "./Welcome";
+import { OverdueInstallments } from "./OverdueInstallments";
+import { PackagesExpiringSoon } from "./PackagesExpiringSoon";
+import { LowUsageWarnings } from "./LowUsageWarnings";
+import { BulkStatusChange } from "./BulkStatusChange";
 
 export const Dashboard = () => {
   const {
@@ -38,11 +42,15 @@ export const Dashboard = () => {
       <div className="md:col-span-3">
         <div className="flex flex-col gap-4">
           {import.meta.env.VITE_IS_DEMO === "true" ? <Welcome /> : null}
+          <OverdueInstallments />
+          <PackagesExpiringSoon />
+          <LowUsageWarnings />
           <RecentLeads />
         </div>
       </div>
       <div className="md:col-span-6">
         <div className="flex flex-col gap-6">
+          <BulkStatusChange />
           {totalDeal ? <LeadStatusChart /> : null}
           <DashboardActivityLog />
         </div>

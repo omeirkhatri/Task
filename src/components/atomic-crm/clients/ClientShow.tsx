@@ -11,7 +11,7 @@ import { useMemo, useState, useEffect } from "react";
 import type { SubmitHandler, FieldValues } from "react-hook-form";
 import { useForm, FormProvider } from "react-hook-form";
 
-import type { Contact, Task, Quote, Deal } from "../types";
+import type { Contact, Task, Quote, Deal, PaymentPackage, Service } from "../types";
 import { ContactAside } from "../contacts/ContactAside";
 import { QuoteItem } from "../quotes/QuoteItem";
 import { AddQuote } from "../quotes/AddQuote";
@@ -19,6 +19,10 @@ import { Task as TaskComponent } from "../tasks/Task";
 import { AddTask } from "../tasks/AddTask";
 import { UnifiedNotesIterator } from "../notes/UnifiedNotesIterator";
 import { ActivityLog } from "../activity/ActivityLog";
+import { usePackageUsage } from "@/hooks/usePackageUsage";
+import { Link } from "react-router";
+import { Plus, ExternalLink } from "lucide-react";
+import { DateField } from "@/components/admin/date-field";
 import {
   crmAddDays,
   crmEndOfDay,
@@ -70,6 +74,16 @@ const ClientShowContent = () => {
     pagination: { page: 1, perPage: 1000 },
     filter: record?.id ? { contact_id: record.id } : {},
   }, { enabled: !!record?.id });
+
+  const { data: paymentPackages } = useGetList<PaymentPackage>("payment_packages", {
+    pagination: { page: 1, perPage: 1000 },
+    filter: record?.id ? { patient_id: record.id } : {},
+    sort: { field: "created_at", order: "DESC" },
+  }, { enabled: !!record?.id });
+
+  const { data: services } = useGetList<Service>("services", {
+    pagination: { page: 1, perPage: 1000 },
+  });
 
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
@@ -270,6 +284,7 @@ const ClientShowContent = () => {
                 <TabsTrigger value="notes" className="flex-1">Notes</TabsTrigger>
                 <TabsTrigger value="quotes" className="flex-1">Quotes</TabsTrigger>
                 <TabsTrigger value="tasks" className="flex-1">Tasks</TabsTrigger>
+                <TabsTrigger value="packages" className="flex-1">Payment Packages</TabsTrigger>
               </TabsList>
               
               <TabsContent value="activity" className="pt-4">
@@ -402,11 +417,94 @@ const ClientShowContent = () => {
                   )}
                 </div>
               </TabsContent>
+              
+              <TabsContent value="packages" className="pt-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Payment Packages</h3>
+                  <Link to={`/payment_packages/create?patient_id=${record.id}`}>
+                    <Button size="sm" className="cursor-pointer">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Package
+                    </Button>
+                  </Link>
+                </div>
+                {paymentPackages && paymentPackages.length > 0 ? (
+                  <div className="space-y-4">
+                    {paymentPackages.map((pkg) => (
+                      <PackageCard key={pkg.id} package={pkg} services={services || []} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No payment packages yet</p>
+                )}
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       </div>
       <ContactAside deals={sortedDeals} />
     </div>
+  );
+};
+
+// Package Card Component
+const PackageCard = ({ package: pkg, services }: { package: PaymentPackage; services: Service[] }) => {
+  const { sessionsUsed, hoursUsed } = usePackageUsage(pkg.id);
+  const service = services.find(s => s.id === pkg.service_id);
+  
+  const statusColors = {
+    active: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    completed: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+    expired: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  };
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <h4 className="font-semibold">
+                {service?.name || "Service"} Package #{pkg.id}
+              </h4>
+              <Badge className={statusColors[pkg.status] || statusColors.completed}>
+                {pkg.status}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {pkg.package_type === "session-based" && pkg.total_sessions && (
+                <>Usage: {sessionsUsed || 0} / {pkg.total_sessions} sessions</>
+              )}
+              {pkg.package_type === "time-based" && pkg.total_hours && (
+                <>Usage: {hoursUsed || 0} / {pkg.total_hours} hours</>
+              )}
+              {pkg.package_type === "post-payment" && "Post-payment package"}
+            </p>
+          </div>
+          <Link to={`/payment_packages/${pkg.id}/show`}>
+            <Button variant="outline" size="sm" className="cursor-pointer">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              View Details
+            </Button>
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Total Amount</p>
+            <p className="font-medium">AED {pkg.total_amount.toLocaleString()}</p>
+          </div>
+          {pkg.renewal_date && (
+            <div>
+              <p className="text-muted-foreground">Renewal Date</p>
+              <DateField source="renewal_date" record={pkg} />
+            </div>
+          )}
+          <div>
+            <p className="text-muted-foreground">Start Date</p>
+            <DateField source="start_date" record={pkg} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };

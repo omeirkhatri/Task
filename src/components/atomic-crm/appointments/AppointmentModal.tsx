@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AppointmentForm } from "./AppointmentForm";
+import { AppointmentEditDialog } from "./AppointmentEditDialog";
 import type { Appointment, RecurrenceConfig } from "../types";
 import { useCreate, useUpdate, useNotify, useDataProvider } from "ra-core";
 import { crmDateTimeStringToISO } from "../misc/timezone";
@@ -24,6 +25,7 @@ type AppointmentFormData = {
   primary_staff_id?: string;
   driver_id?: string;
   staff_ids?: string[];
+  payment_package_id?: string;
   is_recurring?: boolean;
   recurrence_pattern?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
   recurrence_interval?: number;
@@ -51,6 +53,7 @@ type AppointmentData = {
   pickup_instructions?: string | null;
   primary_staff_id?: number | null;
   driver_id?: number | null;
+  payment_package_id?: number | null;
   recurrence_config?: RecurrenceConfig | null;
   is_recurring: boolean;
   // Note: staff_ids is NOT a database column - it's handled via appointment_staff_assignments table
@@ -73,6 +76,9 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<AppointmentFormData | null>(null);
+  const [updateFutureOnly, setUpdateFutureOnly] = useState(false);
   const [create] = useCreate();
   const [update] = useUpdate();
   const dataProvider = useDataProvider();
@@ -80,13 +86,19 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const appointmentTypes = useAppointmentTypes();
   const queryClient = useQueryClient();
 
-  const handleSubmit = async (formData: AppointmentFormData) => {
+  const isRecurring = appointment && (appointment.is_recurring || !!appointment.recurrence_id);
+
+  const performUpdate = async (formData: AppointmentFormData, updateFuture: boolean = false) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      // Transform form data to match database schema
-      // Combine date and time into ISO strings
-      const appointmentDate = formData.appointment_date; // YYYY-MM-DD
+      // For recurring appointments, preserve the original date - only update time and other fields
+      let appointmentDate = formData.appointment_date; // YYYY-MM-DD
+      if (appointment && isRecurring) {
+        // Keep the original appointment date - don't change it
+        appointmentDate = appointment.appointment_date.split("T")[0];
+      }
+      
       const startTime = formData.start_time; // HH:MM
       const endTime = formData.end_time; // HH:MM
 
@@ -141,7 +153,20 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       // The form now uses service IDs (e.g., "service_123") as values, so we need to map them back
       let appointmentType = "doctor_on_call"; // Default
       
+      // Extract selected service IDs to store in custom_fields
+      const selectedServiceIds: number[] = [];
+      
       if (Array.isArray(formData.appointment_type) && formData.appointment_type.length > 0) {
+        // Extract service IDs from selected values
+        formData.appointment_type.forEach((value) => {
+          if (typeof value === "string" && value.startsWith("service_")) {
+            const serviceId = parseInt(value.replace("service_", ""), 10);
+            if (!isNaN(serviceId)) {
+              selectedServiceIds.push(serviceId);
+            }
+          }
+        });
+        
         // Find the first selected service and get its appointment type
         const firstSelectedValue = formData.appointment_type[0];
         const selectedType = appointmentTypes.find(t => t.value === firstSelectedValue);
@@ -158,8 +183,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       } else if (formData.appointment_type && typeof formData.appointment_type === "string") {
         // Handle single string value (backward compatibility)
         if (formData.appointment_type.startsWith("service_")) {
-          const serviceId = formData.appointment_type.replace("service_", "");
-          const foundType = appointmentTypes.find(t => t.serviceId?.toString() === serviceId);
+          const serviceId = parseInt(formData.appointment_type.replace("service_", ""), 10);
+          if (!isNaN(serviceId)) {
+            selectedServiceIds.push(serviceId);
+          }
+          const foundType = appointmentTypes.find(t => t.serviceId?.toString() === serviceId.toString());
           if (foundType?.appointmentType) {
             appointmentType = foundType.appointmentType;
           }
@@ -168,6 +196,13 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         }
       }
 
+      // Store selected service IDs in custom_fields so we can display only the selected services
+      const customFields = appointment?.custom_fields || {};
+      const updatedCustomFields = {
+        ...customFields,
+        selected_service_ids: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
+      };
+      
       const appointmentData: AppointmentData = {
         patient_id: parseInt(formData.patient_id, 10),
         appointment_date: startDateTimeISO.split("T")[0], // Store date part only
@@ -182,6 +217,8 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         pickup_instructions: formData.pickup_instructions || null,
         primary_staff_id: formData.primary_staff_id ? parseInt(formData.primary_staff_id, 10) : null,
         driver_id: formData.driver_id ? parseInt(formData.driver_id, 10) : null,
+        payment_package_id: formData.payment_package_id ? parseInt(formData.payment_package_id, 10) : null,
+        custom_fields: updatedCustomFields,
         // Include recurrence config if present
         recurrence_config: recurrenceConfig || null,
         is_recurring: !!formData.is_recurring,
@@ -191,38 +228,45 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       logger.debug("Saving appointment", { appointmentData, recurrenceConfig });
 
       if (appointment) {
-        // Update appointment
+        // Update appointment - pass updateFutureOnly flag via meta for recurring appointments
         await update(
           "appointments",
           {
             id: appointment.id,
             data: appointmentData,
             previousData: appointment,
+            meta: isRecurring ? { updateFutureOnly: updateFuture } : undefined,
           },
           {
-            onSuccess: async () => {
-              // Update staff assignments
+            onSuccess: async (result: any) => {
+              // Update staff assignments for current appointment
               const appointmentId = appointment.id;
+              const futureAppointmentIds = result?.meta?.futureAppointmentIds || [];
+              const appointmentsToUpdate = [appointmentId, ...futureAppointmentIds];
+              
               try {
-                // Delete existing assignments
-                const { data: existingAssignments } = await dataProvider.getList("appointment_staff_assignments", {
-                  pagination: { page: 1, perPage: 1000 },
-                  filter: { appointment_id: appointmentId },
-                });
-                
-                for (const assignment of existingAssignments || []) {
-                  await dataProvider.delete("appointment_staff_assignments", { id: assignment.id });
-                }
-                
-                // Create new assignments
-                for (const staffId of staffIds) {
-                  await dataProvider.create("appointment_staff_assignments", {
-                    data: {
-                      appointment_id: appointmentId,
-                      staff_id: staffId,
-                      role: "other",
-                    },
+                // Update staff assignments for all appointments (current + future if updateFutureOnly)
+                for (const aptId of appointmentsToUpdate) {
+                  // Delete existing assignments
+                  const { data: existingAssignments } = await dataProvider.getList("appointment_staff_assignments", {
+                    pagination: { page: 1, perPage: 1000 },
+                    filter: { appointment_id: aptId },
                   });
+                  
+                  for (const assignment of existingAssignments || []) {
+                    await dataProvider.delete("appointment_staff_assignments", { id: assignment.id });
+                  }
+                  
+                  // Create new assignments
+                  for (const staffId of staffIds) {
+                    await dataProvider.create("appointment_staff_assignments", {
+                      data: {
+                        appointment_id: aptId,
+                        staff_id: staffId,
+                        role: "other",
+                      },
+                    });
+                  }
                 }
                 
                 // Invalidate queries to refresh appointments and staff assignments
@@ -238,7 +282,10 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 // Don't fail the whole update if staff assignments fail
               }
               
-              notify("Appointment updated successfully", { type: "success" });
+              const message = updateFuture && futureAppointmentIds.length > 0
+                ? `Appointment and ${futureAppointmentIds.length} future appointment(s) updated successfully`
+                : "Appointment updated successfully";
+              notify(message, { type: "success" });
               onSuccess();
             },
             onError: (error: unknown) => {
@@ -306,7 +353,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         );
       }
     } catch (err) {
-      logger.error("Error in handleSubmit", err, { context: "AppointmentModal" });
+      logger.error("Error in performUpdate", err, { context: "AppointmentModal" });
       setError(err instanceof Error ? err.message : "Failed to save appointment");
       notify("Failed to save appointment", { type: "error" });
     } finally {
@@ -314,9 +361,47 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
     }
   };
 
+  const handleSubmit = async (formData: AppointmentFormData) => {
+    // If editing a recurring appointment, show the edit dialog first
+    if (appointment && isRecurring) {
+      setPendingFormData(formData);
+      setShowEditDialog(true);
+      return;
+    }
+    
+    // For non-recurring or new appointments, proceed directly
+    if (appointment) {
+      await performUpdate(formData, false);
+    } else {
+      // Create new appointment - use existing create logic
+      await performUpdate(formData, false);
+    }
+  };
+
+  const handleEditDialogConfirm = async (updateFuture: boolean) => {
+    setShowEditDialog(false);
+    if (pendingFormData) {
+      await performUpdate(pendingFormData, updateFuture);
+      setPendingFormData(null);
+    }
+  };
+
+  const handleEditDialogClose = () => {
+    setShowEditDialog(false);
+    setPendingFormData(null);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="!w-[33vw] !max-w-[600px] min-w-[500px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xl rounded-xl">
+    <>
+      <AppointmentEditDialog
+        open={showEditDialog}
+        onClose={handleEditDialogClose}
+        appointment={appointment}
+        onConfirm={handleEditDialogConfirm}
+        isSubmitting={isSubmitting}
+      />
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="!w-[33vw] !max-w-[600px] min-w-[500px] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-2xl rounded-xl">
         {/* Compact Header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-200 dark:border-slate-700">
           <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -376,6 +461,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   );
 };
 
