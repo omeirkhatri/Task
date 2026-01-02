@@ -41,9 +41,9 @@ jobs:
               uses: wearerequired/lint-action@v2
               with:
                   eslint: true
-                  eslint_args: "**/*.{mjs,ts,tsx}"
+                  eslint_args: "**/*.{mjs,ts,tsx} --ignore-pattern '**/._*'"
                   prettier: true
-                  prettier_args: "--config ./.prettierrc.json \"**/*.{js,json,ts,tsx,css,md,html}\""
+                  prettier_args: "--config ./.prettierrc.json --ignore-path ./.gitignore \"**/*.{js,json,ts,tsx,css,md,html}\""
 
     test:
         name: 🔎 Test
