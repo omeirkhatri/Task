@@ -30,10 +30,10 @@ Based on PRD: `docs/Transport.md`
 - `src/components/atomic-crm/transport/hooks/useDispatcherState.ts` - State management hook for synchronized state between all three panels (selected driver, selected appointment, route updates).
 
 ### Route Builder Components
-- `src/components/atomic-crm/transport/RouteBuilder.tsx` - Per-driver route builder component.
-- `src/components/atomic-crm/transport/StopsListEditor.tsx` - Editable stops list with drag-and-drop reordering.
-- `src/components/atomic-crm/transport/StopRow.tsx` - Individual stop row component with type selector, location, time window, and lock toggle.
-- `src/components/atomic-crm/transport/PickupDropSelector.tsx` - Office/Home/Metro selector component.
+- `src/components/atomic-crm/transport/RouteBuilder.tsx` - Per-driver route builder component that opens in modal/drawer, shows current route with stops list, includes optimize order button and undo functionality.
+- `src/components/atomic-crm/transport/StopsListEditor.tsx` - Editable stops list with drag-and-drop reordering using @hello-pangea/dnd.
+- `src/components/atomic-crm/transport/StopRow.tsx` - Individual stop row component displaying leg type icon, person/location name, planned time window, Pickup/Drop selector, drag handle, and lock toggle.
+- `src/components/atomic-crm/transport/PickupDropSelector.tsx` - Dropdown component for selecting Office/Home/Metro for staff pickup/drop locations.
 
 ### Conflict Resolution Components
 - `src/components/atomic-crm/transport/ConflictCard.tsx` - Individual conflict display card.
@@ -155,7 +155,7 @@ Based on PRD: `docs/Transport.md`
   - [x] 3.7 Add "Plan Today" button and date selector to switch between days
   - [x] 3.8 Implement panel resizing and responsive breakpoints for mobile/tablet/desktop views
 
-- [ ] 4.0 Route Builder Component (Per Driver)
+- [x] 4.0 Route Builder Component (Per Driver)
 
   **Context**: This component allows managers to fine-tune individual driver routes. It provides detailed control over stop order, pickup/drop locations, and timing. This is where managers make manual adjustments after draft generation or when resolving conflicts.
 
@@ -167,14 +167,14 @@ Based on PRD: `docs/Transport.md`
   - Office/Home/Metro locations need to be selectable (may need staff location preferences or settings)
   - Locked stops prevent automatic reordering during optimization
   - Validation must ensure logical sequence (e.g., can't drop staff before pickup)
-  - [ ] 4.1 Create RouteBuilder.tsx component that opens in modal/drawer for selected driver, shows current route with stops list
-  - [ ] 4.2 Implement StopsListEditor.tsx with drag-and-drop reordering using react-beautiful-dnd or dnd-kit
-  - [ ] 4.3 Create StopRow.tsx component displaying: leg type icon, person/location name, planned time window, Pickup/Drop selector (Office/Home/Metro), drag handle, lock toggle
-  - [ ] 4.4 Implement PickupDropSelector.tsx dropdown component for selecting Office/Home/Metro for staff pickup/drop locations
-  - [ ] 4.5 Add "Optimize Order" button that reorders stops for shortest travel without changing appointment times
-  - [ ] 4.6 Implement lock toggle functionality: locked stops cannot be auto-reordered or auto-changed
-  - [ ] 4.7 Add undo functionality with history stack for route changes
-  - [ ] 4.8 Add validation to prevent invalid stop sequences (e.g., drop before pickup)
+  - [x] 4.1 Create RouteBuilder.tsx component that opens in modal/drawer for selected driver, shows current route with stops list
+  - [x] 4.2 Implement StopsListEditor.tsx with drag-and-drop reordering using react-beautiful-dnd or dnd-kit
+  - [x] 4.3 Create StopRow.tsx component displaying: leg type icon, person/location name, planned time window, Pickup/Drop selector (Office/Home/Metro), drag handle, lock toggle
+  - [x] 4.4 Implement PickupDropSelector.tsx dropdown component for selecting Office/Home/Metro for staff pickup/drop locations
+  - [x] 4.5 Add "Optimize Order" button that reorders stops for shortest travel without changing appointment times
+  - [x] 4.6 Implement lock toggle functionality: locked stops cannot be auto-reordered or auto-changed
+  - [x] 4.7 Add undo functionality with history stack for route changes
+  - [x] 4.8 Add validation to prevent invalid stop sequences (e.g., drop before pickup)
 
 - [ ] 5.0 Conflict Detection & Resolution System
 
