@@ -22,12 +22,12 @@ Based on PRD: `docs/Transport.md`
 - `src/components/atomic-crm/transport/utils/conflictDetector.ts` - Conflict detection engine (patient lateness, overlapping legs, unreachable stops).
 
 ### Dispatcher Board Components
-- `src/components/atomic-crm/transport/DispatcherBoard.tsx` - Main dispatcher board component with three-panel layout.
-- `src/components/atomic-crm/transport/UnplannedJobsQueue.tsx` - Left panel showing unplanned appointments with drag-and-drop.
-- `src/components/atomic-crm/transport/DriverTimelineLanes.tsx` - Center panel with horizontal timeline lanes per driver.
-- `src/components/atomic-crm/transport/RouteMapView.tsx` - Right panel with Google Maps showing routes and stops list.
-- `src/components/atomic-crm/transport/StopsList.tsx` - Ordered stops list component below map.
-- `src/components/atomic-crm/transport/hooks/useDispatcherState.ts` - State management hook for dispatcher board synchronization.
+- `src/components/atomic-crm/transport/DispatcherBoard.tsx` - Main dispatcher board component with three-panel layout, date navigation, and panel resizing.
+- `src/components/atomic-crm/transport/UnplannedJobsQueue.tsx` - Left panel showing unplanned appointments with draggable cards displaying time, area, staff, pickup/drop status, and notes.
+- `src/components/atomic-crm/transport/DriverTimelineLanes.tsx` - Center panel with horizontal timeline lanes per driver, showing time-based blocks with color coding (green/yellow/red) and drag-and-drop support.
+- `src/components/atomic-crm/transport/RouteMapView.tsx` - Right panel with Google Maps integration showing route polylines per driver, numbered stops, and synchronized with timeline.
+- `src/components/atomic-crm/transport/StopsList.tsx` - Ordered stops list component below map, synchronized with selected driver's route, clickable to highlight on map.
+- `src/components/atomic-crm/transport/hooks/useDispatcherState.ts` - State management hook for synchronized state between all three panels (selected driver, selected appointment, route updates).
 
 ### Route Builder Components
 - `src/components/atomic-crm/transport/RouteBuilder.tsx` - Per-driver route builder component.
@@ -134,7 +134,7 @@ Based on PRD: `docs/Transport.md`
   - [x] 2.7 Create utility function to extract coordinates from contacts (patient locations) and staff (for office/home/metro locations)
   - [x] 2.8 Add error handling and retry logic for Google Maps API calls with rate limiting considerations
 
-- [ ] 3.0 Dispatcher Board UI (Three-Panel Layout)
+- [x] 3.0 Dispatcher Board UI (Three-Panel Layout)
 
   **Context**: This is the primary workspace for managers to plan daily routes. The three-panel layout provides a comprehensive view: unplanned jobs on the left, driver timelines in the center, and map visualization on the right. All panels stay synchronized as the manager makes changes.
 
@@ -146,14 +146,14 @@ Based on PRD: `docs/Transport.md`
   - Appointments without assigned `driver_trips` are considered "unplanned"
   - Reuse Google Maps integration patterns from `AppointmentMapView.tsx`
   - Timeline should show color-coded blocks: green (safe buffer), yellow (tight < 10 min buffer), red (conflict/violation)
-  - [ ] 3.1 Create main DispatcherBoard.tsx component with responsive three-panel layout (Unplanned Queue | Timeline Lanes | Map + Stops)
-  - [ ] 3.2 Implement UnplannedJobsQueue.tsx: Fetch today's appointments without assigned trips, display as draggable cards showing time, area, staff, pickup/drop required, notes
-  - [ ] 3.3 Implement DriverTimelineLanes.tsx: Display one horizontal lane per active driver, show time-based blocks (Pickup, Drop, Appointment, Wait) with color coding (green/yellow/red), support drag-and-drop from unplanned queue
-  - [ ] 3.4 Implement RouteMapView.tsx: Google Maps integration showing route polylines per driver, numbered stops, icons for staff/patients/office/metro, synchronized with timeline
-  - [ ] 3.5 Implement StopsList.tsx: Ordered list of stops below map, synchronized with selected driver's route, clickable to highlight on map
-  - [ ] 3.6 Create useDispatcherState.ts hook to manage synchronized state between all three panels (selected driver, selected appointment, route updates)
-  - [ ] 3.7 Add "Plan Today" button and date selector to switch between days
-  - [ ] 3.8 Implement panel resizing and responsive breakpoints for mobile/tablet/desktop views
+  - [x] 3.1 Create main DispatcherBoard.tsx component with responsive three-panel layout (Unplanned Queue | Timeline Lanes | Map + Stops)
+  - [x] 3.2 Implement UnplannedJobsQueue.tsx: Fetch today's appointments without assigned trips, display as draggable cards showing time, area, staff, pickup/drop required, notes
+  - [x] 3.3 Implement DriverTimelineLanes.tsx: Display one horizontal lane per active driver, show time-based blocks (Pickup, Drop, Appointment, Wait) with color coding (green/yellow/red), support drag-and-drop from unplanned queue
+  - [x] 3.4 Implement RouteMapView.tsx: Google Maps integration showing route polylines per driver, numbered stops, icons for staff/patients/office/metro, synchronized with timeline
+  - [x] 3.5 Implement StopsList.tsx: Ordered list of stops below map, synchronized with selected driver's route, clickable to highlight on map
+  - [x] 3.6 Create useDispatcherState.ts hook to manage synchronized state between all three panels (selected driver, selected appointment, route updates)
+  - [x] 3.7 Add "Plan Today" button and date selector to switch between days
+  - [x] 3.8 Implement panel resizing and responsive breakpoints for mobile/tablet/desktop views
 
 - [ ] 4.0 Route Builder Component (Per Driver)
 
