@@ -448,6 +448,11 @@ export type Appointment = {
   recurrence_config?: RecurrenceConfig;
   is_recurring?: boolean;
   recurrence_sequence?: number;
+  // Route planning fields
+  pending_client_confirmation?: boolean;
+  route_locked?: boolean;
+  suggested_time_change?: string | null;
+  client_confirmation_status?: "pending" | "approved" | "declined" | null;
 } & Pick<RaRecord, "id">;
 
 export type AppointmentStaffAssignment = {
@@ -521,6 +526,37 @@ export type PaymentSettings = {
   fixed_fee_amount?: number | null;
   vat_percentage: number;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+} & Pick<RaRecord, "id">;
+
+// Transport/Dispatch System Types
+export type DriverTrip = {
+  driver_id: Identifier;
+  trip_date: string; // YYYY-MM-DD
+  start_time: string;
+  end_time: string;
+  status: "draft" | "published" | "completed";
+  vehicle_id?: Identifier | null;
+  created_at: string;
+  updated_at: string;
+} & Pick<RaRecord, "id">;
+
+export type TripLeg = {
+  trip_id: Identifier;
+  leg_type: "pickup_staff" | "drop_staff" | "appointment" | "wait" | "return";
+  leg_order: number;
+  staff_id?: Identifier | null;
+  appointment_id?: Identifier | null;
+  location_type: "office" | "home" | "metro" | "patient";
+  location_id: Identifier; // References contacts.id for patient, or enum for office/metro
+  planned_arrival_time: string;
+  planned_departure_time?: string | null;
+  actual_arrival_time?: string | null;
+  actual_departure_time?: string | null;
+  is_locked: boolean;
+  wait_duration_minutes?: number | null;
+  return_location_type?: "office" | "home" | "metro" | null;
   created_at: string;
   updated_at: string;
 } & Pick<RaRecord, "id">;
