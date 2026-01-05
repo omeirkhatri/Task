@@ -13,11 +13,13 @@ Based on PRD: `docs/Transport.md`
 - `src/components/atomic-crm/transport/types.ts` - Transport-specific types and interfaces including RouteConflict, ConflictType, LegType, LocationType, and related enums/interfaces.
 
 ### Core Route Planning Engine
-- `src/components/atomic-crm/transport/utils/distanceCalculator.ts` - Distance calculation utilities using Google Maps Distance Matrix API.
-- `src/components/atomic-crm/transport/utils/travelTimeCalculator.ts` - Travel time calculation with traffic awareness.
-- `src/components/atomic-crm/transport/utils/routeOptimizer.ts` - Route optimization algorithms for stop ordering.
+- `src/components/atomic-crm/transport/utils/googleMapsApi.ts` - Google Maps API wrapper for Distance Matrix and Directions services with retry logic and rate limiting.
+- `src/components/atomic-crm/transport/utils/distanceCalculator.ts` - Distance calculation utilities using Google Maps Distance Matrix API with batch support.
+- `src/components/atomic-crm/transport/utils/travelTimeCalculator.ts` - Travel time calculation with traffic awareness and ETA calculation functions.
+- `src/components/atomic-crm/transport/utils/routeOptimizer.ts` - Route optimization algorithms for stop ordering while respecting appointment times and locked legs.
+- `src/components/atomic-crm/transport/utils/batchCalculator.ts` - Batch calculation utilities for multiple waypoints to minimize API calls.
+- `src/components/atomic-crm/transport/utils/coordinateExtractor.ts` - Utility functions to extract coordinates from contacts (patients) and staff locations (office/home/metro).
 - `src/components/atomic-crm/transport/utils/conflictDetector.ts` - Conflict detection engine (patient lateness, overlapping legs, unreachable stops).
-- `src/components/atomic-crm/transport/utils/googleMapsApi.ts` - Google Maps API wrapper for Distance Matrix and Directions services.
 
 ### Dispatcher Board Components
 - `src/components/atomic-crm/transport/DispatcherBoard.tsx` - Main dispatcher board component with three-panel layout.
@@ -111,7 +113,7 @@ Based on PRD: `docs/Transport.md`
   - [x] 1.7 Add TypeScript types for DriverTrip, TripLeg, and extend Appointment type in types.ts
   - [x] 1.8 Create transport-specific types file with RouteConflict, ConflictType, LegType, LocationType, and related enums/interfaces
 
-- [ ] 2.0 Core Route Planning Engine (Distance, Travel Time, Traffic)
+- [x] 2.0 Core Route Planning Engine (Distance, Travel Time, Traffic)
 
   **Context**: This task builds the core calculation engine that powers all route planning decisions. The system needs to calculate real-world travel times and distances using Google Maps APIs, which account for traffic conditions. This engine is used by conflict detection, route optimization, and draft generation.
 
@@ -123,14 +125,14 @@ Based on PRD: `docs/Transport.md`
   - Google Maps Distance Matrix API requires API key (already used in `AppointmentMapView.tsx`)
   - Batch calculations are essential to minimize API calls and costs
   - Traffic data is real-time and not stored permanently (recalculated on demand)
-  - [ ] 2.1 Create Google Maps API wrapper utility (googleMapsApi.ts) with functions for Distance Matrix API and Directions API calls
-  - [ ] 2.2 Implement distanceCalculator.ts with function to calculate distance between two coordinates using Google Maps Distance Matrix API
-  - [ ] 2.3 Implement travelTimeCalculator.ts with function to calculate travel time between locations with traffic awareness (using Distance Matrix API with traffic model)
-  - [ ] 2.4 Add ETA calculation function that considers current time, traffic conditions, and updates dynamically
-  - [ ] 2.5 Implement routeOptimizer.ts with function to optimize stop order for shortest travel time without changing appointment times
-  - [ ] 2.6 Add batch distance/time calculation function for multiple waypoints to minimize API calls
-  - [ ] 2.7 Create utility function to extract coordinates from contacts (patient locations) and staff (for office/home/metro locations)
-  - [ ] 2.8 Add error handling and retry logic for Google Maps API calls with rate limiting considerations
+  - [x] 2.1 Create Google Maps API wrapper utility (googleMapsApi.ts) with functions for Distance Matrix API and Directions API calls
+  - [x] 2.2 Implement distanceCalculator.ts with function to calculate distance between two coordinates using Google Maps Distance Matrix API
+  - [x] 2.3 Implement travelTimeCalculator.ts with function to calculate travel time between locations with traffic awareness (using Distance Matrix API with traffic model)
+  - [x] 2.4 Add ETA calculation function that considers current time, traffic conditions, and updates dynamically
+  - [x] 2.5 Implement routeOptimizer.ts with function to optimize stop order for shortest travel time without changing appointment times
+  - [x] 2.6 Add batch distance/time calculation function for multiple waypoints to minimize API calls
+  - [x] 2.7 Create utility function to extract coordinates from contacts (patient locations) and staff (for office/home/metro locations)
+  - [x] 2.8 Add error handling and retry logic for Google Maps API calls with rate limiting considerations
 
 - [ ] 3.0 Dispatcher Board UI (Three-Panel Layout)
 
