@@ -76,7 +76,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
   }, [staff, appointment?.staff_ids]);
   
   // Find selected appointment types - use selected_service_ids from custom_fields if available
-  // Otherwise fall back to showing all services that match the appointment_type
+  // Otherwise fall back to showing the first service that matches the appointment_type
   const appointmentTypesList = React.useMemo(() => {
     if (!appointment?.appointment_type) return [];
     
@@ -91,8 +91,10 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
     }
     
     // Fallback: The database stores the mapped appointment_type (e.g., "doctor_on_call")
-    // Find all services that map to this appointment_type (for backward compatibility)
-    return appointmentTypes.filter((t) => t.appointmentType === appointment.appointment_type);
+    // Find the first service that maps to this appointment_type (for backward compatibility)
+    // Only show one service to avoid showing multiple services that map to the same appointment_type
+    const matchingType = appointmentTypes.find((t) => t.appointmentType === appointment.appointment_type);
+    return matchingType ? [matchingType] : [];
   }, [appointmentTypes, appointment?.appointment_type, appointment?.custom_fields]);
   
   // For backward compatibility, also try to find by direct value match
