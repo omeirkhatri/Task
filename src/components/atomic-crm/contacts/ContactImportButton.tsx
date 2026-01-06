@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { MouseEvent } from "react";
 import { Upload, Loader2, AlertCircle } from "lucide-react";
-import { Form, useRefresh } from "ra-core";
+import { Form, useRefresh, useGetList } from "ra-core";
 import { Link } from "react-router";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import { usePapaParse } from "../misc/usePapaParse";
 import type { ContactImportSchema } from "./useContactImport";
 import { useContactImport } from "./useContactImport";
 import { formatImportError } from "./formatImportError";
-import * as sampleCsv from "./contacts_export.csv?raw";
+import type { Service } from "../types";
 
 export const ContactImportButton = () => {
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,9 +53,53 @@ export const ContactImportButton = () => {
   );
 };
 
-const SAMPLE_URL = `data:text/csv;name=crm_contacts_sample.csv;charset=utf-8,${encodeURIComponent(
-  sampleCsv.default,
-)}`;
+function generateSampleCsv(services: Service[]): string {
+  // Sort services by ID
+  const sortedServices = [...services].sort((a, b) => Number(a.id) - Number(b.id));
+  
+  // Generate service ID cheat sheet
+  const serviceCheatSheet = sortedServices.length > 0
+    ? sortedServices.map((service) => `# ${service.id} = ${service.name}`).join("\n")
+    : `# 1 = Doctor on Call
+# 2 = Teleconsultation
+# 3 = Physiotherapy
+# 4 = Nurse on Call
+# 5 = Blood Test
+# 6 = IV Therapy
+# 7 = Nanny
+# 8 = Elderly Care`;
+
+  // Get example service IDs (use first 3 for John, first 2 for Jane)
+  const exampleServiceIds1 = sortedServices.length >= 3
+    ? `${sortedServices[0].id};${sortedServices[Math.min(2, sortedServices.length - 1)].id};${sortedServices[Math.min(5, sortedServices.length - 1)].id}`
+    : sortedServices.length > 0
+    ? sortedServices.map(s => s.id).join(";")
+    : "1;6;8";
+  
+  const exampleServiceIds2 = sortedServices.length >= 2
+    ? `${sortedServices[0].id};${sortedServices[Math.min(1, sortedServices.length - 1)].id}`
+    : sortedServices.length > 0
+    ? sortedServices[0].id.toString()
+    : "2;5";
+
+  const csvContent = `# INSTRUCTIONS: 
+# - email_jsonb: Just type email address(es). For multiple emails, separate with semicolon (e.g., "john@example.com" or "john@example.com;jane@example.com")
+# - phone_jsonb: Just type phone number(s) in quotes to prevent Excel from converting to scientific notation. For multiple phones, separate with semicolon (e.g., "971551010743" or "971551010743;971501234567")
+#   Note: Always put phone numbers in quotes in Excel to prevent scientific notation. Excel may remove + prefix - that's OK, just type numbers (e.g., "971551010743" instead of "+971 55 101 0743")
+# - coordinates: Format as "latitude, longitude" (e.g., "25.157134, 55.409436"). Google Maps link will be auto-generated.
+# - google_maps_link: Optional. If coordinates are provided, this will be auto-generated. You can also provide a custom link.
+# - All coordinate fields are optional. If coordinates are provided, google_maps_link will be created automatically.
+#
+# SERVICE ID CHEAT SHEET (use semicolon-separated IDs in services_interested column, e.g., "1;6;8"):
+${serviceCheatSheet}
+#
+first_name,last_name,gender,email_jsonb,phone_jsonb,flat_villa_number,building_street,area,coordinates,google_maps_link,phone_has_whatsapp,services_interested,description,first_seen,last_seen,tags
+John,Doe,male,john@doe.example,"971551010743","Villa Lv 115",Longview,"Damac hills 1","25.157134, 55.409436",,TRUE,"${exampleServiceIds1}","Sample lead description",2024-07-01T00:00:00+00:00,2024-07-01T11:54:49.95+00:00,Satisfied
+Jane,Doe,female,jane@doe.example,"971501234567",,"Main Street","Dubai Marina",,,FALSE,"${exampleServiceIds2}","Another lead description",2024-07-01T00:00:00+00:00,2024-07-01T11:54:49.95+00:00,"VIP, Regular"
+`;
+
+  return csvContent;
+}
 
 type ContactImportModalProps = {
   open: boolean;
@@ -72,6 +116,21 @@ export function ContactImportDialog({
     batchSize: 10,
     processBatch,
   });
+
+  // Fetch services to generate dynamic CSV
+  const { data: services } = useGetList<Service>("services", {
+    pagination: { page: 1, perPage: 1000 },
+    sort: { field: "name", order: "ASC" },
+  });
+
+  // Generate CSV sample dynamically with current services
+  const sampleCsvContent = useMemo(() => {
+    return generateSampleCsv(services || []);
+  }, [services]);
+
+  const sampleUrl = useMemo(() => {
+    return `data:text/csv;name=crm_contacts_sample.csv;charset=utf-8,${encodeURIComponent(sampleCsvContent)}`;
+  }, [sampleCsvContent]);
 
   const [file, setFile] = useState<File | null>(null);
 
@@ -229,15 +288,25 @@ export function ContactImportDialog({
               <>
                 <Alert>
                   <AlertDescription className="flex flex-col gap-4">
-                    Here is a sample CSV file you can use as a template
+                    <div>
+                      Here is a sample CSV file you can use as a template
+                    </div>
                     <Button asChild variant="outline" size="sm">
                       <Link
-                        to={SAMPLE_URL}
+                        to={sampleUrl}
                         download={"crm_contacts_sample.csv"}
                       >
                         Download CSV sample
                       </Link>
-                    </Button>{" "}
+                    </Button>
+                    <div className="text-xs text-muted-foreground space-y-1 mt-2 pt-2 border-t">
+                      <div><strong>Important Notes:</strong></div>
+                      <div>• <strong>email_jsonb</strong>: Just type email address(es). Multiple emails: separate with semicolon (e.g., "john@example.com;jane@example.com")</div>
+                      <div>• <strong>phone_jsonb</strong>: Just type phone number(s). Multiple phones: separate with semicolon. Excel removes + prefix - that's OK, just type numbers (e.g., "971551010743")</div>
+                      <div>• <strong>services_interested</strong>: Use semicolon-separated service IDs (e.g., "1;6;8"). See the CSV file for Service ID cheat sheet.</div>
+                      <div>• <strong>coordinates</strong>: Format as "latitude, longitude" (e.g., "25.157134, 55.409436"). Google Maps link will be auto-generated if coordinates are provided.</div>
+                      <div>• <strong>google_maps_link</strong>: Optional. Auto-generated from coordinates if provided, or you can enter a custom link.</div>
+                    </div>
                   </AlertDescription>
                 </Alert>
 

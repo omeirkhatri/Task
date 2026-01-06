@@ -67,6 +67,7 @@ export function usePapaParse<T>({
       Papa.parse<T>(file, {
         header: true,
         skipEmptyLines: true,
+        comments: "#", // Skip lines starting with #
         async complete(results) {
           if (importIdRef.current !== importId) {
             return;

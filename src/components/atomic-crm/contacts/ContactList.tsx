@@ -355,20 +355,61 @@ const exporter: Exporter<Contact> = async (records, fetchRelatedRecords) => {
     "company_id",
     "companies",
   );
-  const sales = await fetchRelatedRecords<Sale>(records, "sales_id", "sales");
   const tags = await fetchRelatedRecords<Tag>(records, "tags", "tags");
 
   const contacts = records.map((contact) => {
+    // Format email_jsonb as simple semicolon-separated emails (matching import format)
+    const emailStrings = (contact.email_jsonb && Array.isArray(contact.email_jsonb))
+      ? contact.email_jsonb
+          .map((email) => email?.email)
+          .filter(Boolean)
+      : [];
+    const email_jsonb = emailStrings.join(";") || "";
+
+    // Format phone_jsonb as simple semicolon-separated phones (matching import format)
+    // Format with leading tab to force Excel to treat as text (prevents scientific notation)
+    // Tab character is invisible but ensures Excel doesn't convert to number
+    const phoneStrings = (contact.phone_jsonb && Array.isArray(contact.phone_jsonb))
+      ? contact.phone_jsonb
+          .map((phone) => {
+            if (!phone || !phone.number) return "";
+            // Remove + and spaces, add tab prefix for Excel text formatting
+            const num = String(phone.number).replace(/[\s+]/g, "");
+            return num ? `\t${num}` : "";
+          })
+          .filter(Boolean)
+      : [];
+    const phone_jsonb = phoneStrings.join(";") || "";
+
+    // Format coordinates as "lat, lng" if both exist (matching import format)
+    let coordinates = "";
+    if (contact.latitude != null && contact.longitude != null) {
+      coordinates = `${contact.latitude}, ${contact.longitude}`;
+    }
+
+    // Format tags as comma-separated names (matching import format)
+    const tagNames = (contact.tags && Array.isArray(contact.tags) && tags)
+      ? contact.tags
+          .map((tagId) => tags[tagId]?.name || "")
+          .filter(Boolean)
+          .join(", ")
+      : "";
+
+    // Format company name (for import matching)
+    const companyName = (contact.company_id && companies && companies[contact.company_id])
+      ? companies[contact.company_id].name
+      : "";
+
     const exportedContact = {
-      id: contact.id,
       first_name: contact.first_name || "",
       last_name: contact.last_name || "",
       gender: contact.gender || "",
-      email_jsonb: JSON.stringify(contact.email_jsonb || []),
-      phone_jsonb: JSON.stringify(contact.phone_jsonb || []),
+      email_jsonb: email_jsonb,
+      phone_jsonb: phone_jsonb,
       flat_villa_number: contact.flat_villa_number || "",
       building_street: contact.building_street || "",
       area: contact.area || "",
+      coordinates: coordinates,
       google_maps_link: contact.google_maps_link || "",
       phone_has_whatsapp: contact.phone_has_whatsapp ? "TRUE" : "FALSE",
       services_interested: Array.isArray(contact.services_interested)
@@ -377,16 +418,43 @@ const exporter: Exporter<Contact> = async (records, fetchRelatedRecords) => {
       description: contact.description || "",
       first_seen: contact.first_seen || "",
       last_seen: contact.last_seen || "",
-      tags: contact.tags.map((tagId) => tags[tagId]?.name || "").filter(Boolean).join(", ") || "",
-      sales_id: contact.sales_id || "",
-      nb_tasks: contact.nb_tasks || 0,
-      sales: sales[contact.sales_id]
-        ? `${sales[contact.sales_id].first_name} ${sales[contact.sales_id].last_name}`
-        : "",
+      tags: tagNames,
+      // Legacy fields for backward compatibility
+      title: contact.title || "",
+      company: companyName,
+      background: contact.background || "",
+      status: contact.status || "",
+      linkedin_url: contact.linkedin_url || "",
+      has_newsletter: contact.has_newsletter ? "TRUE" : "FALSE",
     };
     return exportedContact;
   });
-  return jsonExport(contacts, {}, (_err: any, csv: string) => {
+  return jsonExport(contacts, {
+    headers: [
+      "first_name",
+      "last_name",
+      "gender",
+      "email_jsonb",
+      "phone_jsonb",
+      "flat_villa_number",
+      "building_street",
+      "area",
+      "coordinates",
+      "google_maps_link",
+      "phone_has_whatsapp",
+      "services_interested",
+      "description",
+      "first_seen",
+      "last_seen",
+      "tags",
+      "title",
+      "company",
+      "background",
+      "status",
+      "linkedin_url",
+      "has_newsletter",
+    ],
+  }, (_err: any, csv: string) => {
     downloadCSV(csv, "contacts");
   });
 };

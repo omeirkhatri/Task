@@ -19,6 +19,7 @@ export type ContactImportSchema = {
   flat_villa_number?: string;
   building_street?: string;
   area?: string;
+  coordinates?: string;
   google_maps_link?: string;
   phone_has_whatsapp?: string;
   services_interested?: string;
@@ -115,6 +116,7 @@ export function useContactImport() {
               flat_villa_number,
               building_street,
               area,
+              coordinates,
               google_maps_link,
               phone_has_whatsapp,
               services_interested,
@@ -139,20 +141,24 @@ export function useContactImport() {
             
             // Ignore id, sales_id, nb_tasks, and sales from CSV - these are auto-generated
 
-            // Parse email_jsonb if provided, otherwise fall back to legacy fields
+            // Parse email_jsonb - support both JSON format and simple email strings
             let parsedEmailJsonb: Array<{ email: string; type: string }> = [];
             if (email_jsonb) {
               try {
-                parsedEmailJsonb = JSON.parse(email_jsonb);
+                // Try parsing as JSON first (for backward compatibility)
+                const parsed = JSON.parse(email_jsonb);
+                if (Array.isArray(parsed)) {
+                  parsedEmailJsonb = parsed;
+                } else {
+                  throw new Error("Not an array");
+                }
               } catch {
-                // If parsing fails, try legacy fields
-                parsedEmailJsonb = [
-                  { email: email_work, type: "Work" },
-                  { email: email_home, type: "Home" },
-                  { email: email_other, type: "Other" },
-                ].filter(({ email }) => email);
+                // If not JSON, treat as simple email string(s) separated by semicolon
+                const emailStrings = String(email_jsonb).split(";").map(s => s.trim()).filter(Boolean);
+                parsedEmailJsonb = emailStrings.map(email => ({ email, type: "Work" }));
               }
             } else if (email_work || email_home || email_other) {
+              // Fall back to legacy fields
               parsedEmailJsonb = [
                 { email: email_work, type: "Work" },
                 { email: email_home, type: "Home" },
@@ -160,20 +166,53 @@ export function useContactImport() {
               ].filter(({ email }) => email);
             }
 
-            // Parse phone_jsonb if provided, otherwise fall back to legacy fields
+            // Parse phone_jsonb - support both JSON format and simple phone strings
             let parsedPhoneJsonb: Array<{ number: string; type: string }> = [];
             if (phone_jsonb) {
               try {
-                parsedPhoneJsonb = JSON.parse(phone_jsonb);
+                // Try parsing as JSON first (for backward compatibility)
+                const parsed = JSON.parse(phone_jsonb);
+                if (Array.isArray(parsed)) {
+                  parsedPhoneJsonb = parsed;
+                } else {
+                  throw new Error("Not an array");
+                }
               } catch {
-                // If parsing fails, try legacy fields
-                parsedPhoneJsonb = [
-                  { number: phone_work, type: "Work" },
-                  { number: phone_home, type: "Home" },
-                  { number: phone_other, type: "Other" },
-                ].filter(({ number }) => number);
+                // If not JSON, treat as simple phone string(s) separated by semicolon
+                const phoneStrings = String(phone_jsonb).split(";").map(s => s.trim()).filter(Boolean);
+                parsedPhoneJsonb = phoneStrings.map(phone => {
+                  // Remove quotes, tabs, and spaces (tabs may be added by Excel for text formatting)
+                  let formattedPhone = phone.replace(/^["']|["']$/g, "").replace(/[\s\t]/g, ""); // Remove quotes, spaces, and tabs
+                  
+                  // Handle Excel scientific notation (e.g., "9.71527E+11" -> "971527000000")
+                  // Check if it's in scientific notation (contains 'E' or 'e')
+                  if (/[eE]/.test(formattedPhone)) {
+                    try {
+                      // Convert scientific notation to regular number, then to string
+                      const num = parseFloat(formattedPhone);
+                      if (!isNaN(num)) {
+                        formattedPhone = Math.round(num).toString();
+                      }
+                    } catch {
+                      // If conversion fails, keep original
+                    }
+                  }
+                  
+                  // Format phone number - add + if it looks like an international number (starts with country code)
+                  // Handle numbers like "971551010743" or "971 55 101 0743" or "+971551010743"
+                  // If it doesn't start with + and looks like an international number (starts with 1-3 digits), add +
+                  if (!formattedPhone.startsWith("+") && /^\d{8,15}$/.test(formattedPhone)) {
+                    // Check if it starts with a common country code pattern (1-3 digits)
+                    // For UAE (971), add + prefix
+                    if (formattedPhone.startsWith("971") || formattedPhone.startsWith("1") || formattedPhone.match(/^\d{10,15}$/)) {
+                      formattedPhone = `+${formattedPhone}`;
+                    }
+                  }
+                  return { number: formattedPhone, type: "Work" };
+                });
               }
             } else if (phone_work || phone_home || phone_other) {
+              // Fall back to legacy fields
               parsedPhoneJsonb = [
                 { number: phone_work, type: "Work" },
                 { number: phone_home, type: "Home" },
@@ -191,6 +230,28 @@ export function useContactImport() {
                   .map((s) => parseInt(s, 10))
                   .filter((n) => !isNaN(n))
               : [];
+
+            // Parse coordinates from "lat, lng" format
+            let parsedLatitude: number | null = null;
+            let parsedLongitude: number | null = null;
+            let finalGoogleMapsLink: string | undefined = google_maps_link;
+            
+            if (coordinates) {
+              // Parse from "lat, lng" format
+              const parts = String(coordinates).split(",").map((s) => s.trim());
+              if (parts.length === 2) {
+                const lat = parseFloat(parts[0]);
+                const lng = parseFloat(parts[1]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                  parsedLatitude = lat;
+                  parsedLongitude = lng;
+                  // Auto-generate Google Maps link from coordinates if not provided
+                  if (!google_maps_link) {
+                    finalGoogleMapsLink = `https://www.google.com/maps?q=${lat},${lng}`;
+                  }
+                }
+              }
+            }
 
             const company = companyName?.trim()
               ? companies.get(companyName.trim())
@@ -219,7 +280,9 @@ export function useContactImport() {
                 flat_villa_number,
                 building_street,
                 area,
-                google_maps_link,
+                latitude: parsedLatitude,
+                longitude: parsedLongitude,
+                google_maps_link: finalGoogleMapsLink,
                 phone_has_whatsapp: phone_has_whatsapp === "TRUE" || phone_has_whatsapp === "true",
                 services_interested: parsedServicesInterested,
                 description,

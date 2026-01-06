@@ -1,3 +1,22 @@
-first_name,last_name,gender,email_jsonb,phone_jsonb,flat_villa_number,building_street,area,google_maps_link,phone_has_whatsapp,services_interested,description,first_seen,last_seen,tags
-John,Doe,male,"[{""email"":""john@doe.example"",""type"":""Work""}]","[{""number"":""+971 55 101 0743"",""type"":""Work""}]",Villa Lv 115,Longview,Damac hills 1,https://maps.google.com/?q=Damac+hills+1,TRUE,"1;6;8",Sample lead description,2024-07-01T00:00:00+00:00,2024-07-01T11:54:49.95+00:00,Satisfied
-Jane,Doe,female,"[{""email"":""jane@doe.example"",""type"":""Work""}]","[{""number"":""+971 50 123 4567"",""type"":""Work""}]",,Main Street,Dubai Marina,,FALSE,"2;5",Another lead description,2024-07-01T00:00:00+00:00,2024-07-01T11:54:49.95+00:00,"VIP, Regular"
+# INSTRUCTIONS: 
+# - email_jsonb: Just type email address(es). For multiple emails, separate with semicolon (e.g., "john@example.com" or "john@example.com;jane@example.com")
+# - phone_jsonb: Just type phone number(s) in quotes to prevent Excel from converting to scientific notation. For multiple phones, separate with semicolon (e.g., "971551010743" or "971551010743;971501234567")
+#   Note: Always put phone numbers in quotes in Excel to prevent scientific notation. Excel may remove + prefix - that's OK, just type numbers (e.g., "971551010743" instead of "+971 55 101 0743")
+# - coordinates: Format as "latitude, longitude" (e.g., "25.157134, 55.409436"). Google Maps link will be auto-generated.
+# - google_maps_link: Optional. If coordinates are provided, this will be auto-generated. You can also provide a custom link.
+# - All coordinate fields are optional. If coordinates are provided, google_maps_link will be created automatically.
+#
+# SERVICE ID CHEAT SHEET (use semicolon-separated IDs in services_interested column, e.g., "1;6;8"):
+# 1 = Doctor on Call
+# 2 = Teleconsultation
+# 3 = Physiotherapy
+# 4 = Nurse on Call
+# 5 = Blood Test
+# 6 = IV Therapy
+# 7 = Nanny
+# 8 = Elderly Care
+# Note: Service IDs may vary. Check Services Management page if your IDs are different.
+#
+first_name,last_name,gender,email_jsonb,phone_jsonb,flat_villa_number,building_street,area,coordinates,google_maps_link,phone_has_whatsapp,services_interested,description,first_seen,last_seen,tags
+John,Doe,male,john@doe.example,"971551010743","Villa Lv 115",Longview,"Damac hills 1","25.157134, 55.409436",,TRUE,"1;6;8","Sample lead description",2024-07-01T00:00:00+00:00,2024-07-01T11:54:49.95+00:00,Satisfied
+Jane,Doe,female,jane@doe.example,"971501234567",,"Main Street","Dubai Marina",,,FALSE,"2;5","Another lead description",2024-07-01T00:00:00+00:00,2024-07-01T11:54:49.95+00:00,"VIP, Regular"
