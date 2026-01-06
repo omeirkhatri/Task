@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
@@ -16,6 +17,7 @@ import { useAppointmentTypes } from "./useAppointmentTypes";
 import { formatCrmTime, crmDateYmdInputString, extractCrmTime } from "../misc/timezone";
 import { cn } from "@/lib/utils";
 import { CustomMultiSelect, type MultiSelectOption } from "./CustomMultiSelect";
+import { usePackageUsage } from "@/hooks/usePackageUsage";
 
 type AppointmentFormProps = {
   appointment?: Appointment | null;
@@ -253,6 +255,15 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
       return allServiceIds.includes(pkg.service_id.toString());
     });
   }, [paymentPackages, services, selectedAppointmentTypes, appointmentTypes]);
+
+  // Get selected package
+  const selectedPackageId = watch("payment_package_id");
+  const selectedPackage = availablePackages.find(p => p.id.toString() === selectedPackageId);
+  
+  // Get usage data for selected package
+  const { sessionsUsed, hoursUsed, isLoading: isLoadingUsage } = usePackageUsage(
+    selectedPackage?.id
+  );
   
   // Filter patients based on search
   const filteredPatients = useMemo(() => {
@@ -270,9 +281,18 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
   const selectedPatient = patients?.find((p) => p.id.toString() === selectedPatientId);
 
   const startTime = watch("start_time");
+  const endTime = watch("end_time");
   const durationMinutes = watch("duration_minutes");
   const appointmentDate = watch("appointment_date");
   const hasSetFromCalendar = React.useRef(false);
+  const isUpdatingFromDuration = React.useRef(false);
+  const isUpdatingFromEndTime = React.useRef(false);
+  const [durationUnit, setDurationUnit] = useState<"minutes" | "hours">("minutes");
+
+  // Register duration_minutes field for validation
+  React.useEffect(() => {
+    register("duration_minutes", { required: true, min: 15 });
+  }, [register]);
 
 
   // Update form values when initialDateTime is provided (for new appointments from calendar drag)
@@ -319,7 +339,8 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
   // Auto-calculate end_time when start_time or duration changes
   // Skip if we just set values from calendar selection to preserve the selected time range
   React.useEffect(() => {
-    if (startTime && durationMinutes && !hasSetFromCalendar.current) {
+    if (startTime && durationMinutes && !hasSetFromCalendar.current && !isUpdatingFromEndTime.current) {
+      isUpdatingFromDuration.current = true;
       const [hours, minutes] = startTime.split(":").map(Number);
       const start = new Date();
       start.setHours(hours, minutes, 0, 0);
@@ -333,8 +354,41 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
       if (!currentEndTime || currentEndTime !== endTimeStr) {
         setValue("end_time", endTimeStr, { shouldValidate: false });
       }
+      setTimeout(() => {
+        isUpdatingFromDuration.current = false;
+      }, 0);
     }
   }, [startTime, durationMinutes, setValue, watch]);
+
+  // Auto-calculate duration_minutes when start_time or end_time changes
+  // Skip if we just set values from calendar selection to preserve the selected time range
+  React.useEffect(() => {
+    if (startTime && endTime && !hasSetFromCalendar.current && !isUpdatingFromDuration.current) {
+      isUpdatingFromEndTime.current = true;
+      const [startHours, startMinutes] = startTime.split(":").map(Number);
+      const [endHours, endMinutes] = endTime.split(":").map(Number);
+      const start = new Date();
+      start.setHours(startHours, startMinutes, 0, 0);
+      const end = new Date();
+      end.setHours(endHours, endMinutes, 0, 0);
+      
+      // Handle case where end time is next day
+      if (end.getTime() < start.getTime()) {
+        end.setDate(end.getDate() + 1);
+      }
+      
+      const durationMs = end.getTime() - start.getTime();
+      const calculatedDurationMinutes = Math.max(Math.round(durationMs / (60 * 1000)), 15);
+      
+      // Only update if duration would be different (to avoid infinite loops)
+      if (calculatedDurationMinutes !== durationMinutes) {
+        setValue("duration_minutes", calculatedDurationMinutes, { shouldValidate: false });
+      }
+      setTimeout(() => {
+        isUpdatingFromEndTime.current = false;
+      }, 0);
+    }
+  }, [startTime, endTime, setValue, durationMinutes]);
 
   const onFormSubmit = (data: AppointmentFormData) => {
     // Convert "__none__" back to empty string for payment_package_id
@@ -498,19 +552,77 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
           )}
         </div>
         <div>
-          <Label htmlFor="duration_minutes" className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-            Duration <span className="text-red-500">*</span>
-          </Label>
+          <div className="flex items-center justify-between mb-1.5">
+            <Label htmlFor="duration_minutes" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Duration <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex items-center gap-2">
+              <span className={cn("text-xs text-slate-600 dark:text-slate-400", durationUnit === "minutes" && "font-medium")}>
+                M
+              </span>
+              <Switch
+                checked={durationUnit === "hours"}
+                onCheckedChange={(checked) => {
+                  const newUnit = checked ? "hours" : "minutes";
+                  setDurationUnit(newUnit);
+                  // Convert current value when switching units
+                  const currentValue = durationMinutes;
+                  if (newUnit === "hours") {
+                    // Convert minutes to hours (round to 1 decimal)
+                    const hoursValue = Math.round((currentValue / 60) * 10) / 10;
+                    // Store the hours value temporarily in a ref or state
+                    // We'll handle the conversion in the input's onChange
+                  } else {
+                    // Convert hours back to minutes
+                    // This will be handled by the input's onChange
+                  }
+                }}
+                className="h-4 w-7"
+              />
+              <span className={cn("text-xs text-slate-600 dark:text-slate-400", durationUnit === "hours" && "font-medium")}>
+                H
+              </span>
+            </div>
+          </div>
           <Input
             type="number"
-            {...register("duration_minutes", { required: true, min: 15 })}
+            id="duration_minutes"
+            value={durationUnit === "hours" 
+              ? (durationMinutes / 60).toFixed(1)
+              : durationMinutes.toString()
+            }
+            onChange={(e) => {
+              const inputValue = parseFloat(e.target.value);
+              if (isNaN(inputValue) || inputValue < 0) {
+                // Allow empty input
+                if (e.target.value === "") return;
+                return;
+              }
+              
+              const newDurationMinutes = durationUnit === "hours" 
+                ? Math.round(inputValue * 60)
+                : Math.round(inputValue);
+              
+              // Ensure minimum of 15 minutes
+              const finalDuration = Math.max(newDurationMinutes, 15);
+              setValue("duration_minutes", finalDuration, { shouldValidate: true });
+            }}
+            onBlur={() => {
+              // Ensure value is set even if user didn't type anything
+              if (!durationMinutes || durationMinutes < 15) {
+                setValue("duration_minutes", 15, { shouldValidate: true });
+              }
+            }}
             className="h-9 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm"
-            placeholder="60"
-            step="15"
-            min="15"
+            placeholder={durationUnit === "hours" ? "1.0" : "60"}
+            step={durationUnit === "hours" ? "0.25" : "15"}
+            min={durationUnit === "hours" ? "0.25" : "15"}
+            required
           />
           {errors.duration_minutes && (
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1">Min 15 min</p>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+              {durationUnit === "hours" ? "Min 0.25 hours (15 min)" : "Min 15 min"}
+            </p>
           )}
         </div>
       </div>
@@ -639,10 +751,57 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
               )}
             </SelectContent>
           </Select>
-          {availablePackages.length > 0 && watch("payment_package_id") && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Package will be used to track usage for this appointment
-            </p>
+          {selectedPackage && (
+            <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Package Details:
+              </p>
+              {isLoadingUsage ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400">Loading usage data...</p>
+              ) : (
+                <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
+                  {selectedPackage.package_type === "session-based" && selectedPackage.total_sessions && (
+                    <p>
+                      <span className="font-medium">Sessions:</span> {sessionsUsed || 0} / {selectedPackage.total_sessions} used
+                      {selectedPackage.total_sessions > (sessionsUsed || 0) && (
+                        <span className="ml-1 text-green-600 dark:text-green-400">
+                          ({selectedPackage.total_sessions - (sessionsUsed || 0)} remaining)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {selectedPackage.package_type === "time-based" && (
+                    <>
+                      {selectedPackage.hours_per_day && (
+                        <p>
+                          <span className="font-medium">Hours per day:</span> {selectedPackage.hours_per_day}
+                        </p>
+                      )}
+                      {selectedPackage.total_hours && (
+                        <p>
+                          <span className="font-medium">Hours:</span> {hoursUsed || 0} / {selectedPackage.total_hours} used
+                          {selectedPackage.total_hours > (hoursUsed || 0) && (
+                            <span className="ml-1 text-green-600 dark:text-green-400">
+                              ({selectedPackage.total_hours - (hoursUsed || 0)} remaining)
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {selectedPackage.package_type === "post-payment" && (
+                    <p>
+                      <span className="font-medium">Next payment date:</span>{" "}
+                      {selectedPackage.next_payment_date ? (
+                        new Date(selectedPackage.next_payment_date).toLocaleDateString()
+                      ) : (
+                        <span className="text-yellow-600 dark:text-yellow-400">Not set</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
