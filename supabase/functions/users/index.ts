@@ -394,32 +394,39 @@ Deno.serve(async (req: Request) => {
     console.log("[users function] User authenticated:", data.user.id);
     
     console.log("[users function] Fetching current user sale...");
-    const currentUserSale = await supabaseAdmin
+    const { data: saleData, error: saleError } = await supabaseAdmin
       .from("sales")
       .select("*")
       .eq("user_id", data.user.id)
       .single();
 
-    if (!currentUserSale?.data) {
+    if (saleError) {
+      console.error("[users function] Error fetching sales record:", saleError);
+      return createErrorResponse(401, `Unauthorized: ${saleError.message || "Failed to fetch sales record"}`);
+    }
+
+    if (!saleData) {
       console.error("[users function] No sales record found for user:", data.user.id);
       return createErrorResponse(401, "Unauthorized: No sales record found");
     }
     
-    console.log("[users function] Current user sale found:", currentUserSale.data.id);
+    const currentUserSale = { data: saleData };
+    
+    console.log("[users function] Current user sale found:", saleData.id);
     
     if (req.method === "POST") {
       console.log("[users function] Calling inviteUser...");
-      return await inviteUser(req, currentUserSale.data);
+      return await inviteUser(req, saleData);
     }
 
     if (req.method === "PATCH") {
       console.log("[users function] Calling patchUser...");
-      return await patchUser(req, currentUserSale.data);
+      return await patchUser(req, saleData);
     }
 
     if (req.method === "DELETE") {
       console.log("[users function] Calling deleteUser...");
-      return await deleteUser(req, currentUserSale.data);
+      return await deleteUser(req, saleData);
     }
 
     console.error("[users function] Method not allowed:", req.method);
