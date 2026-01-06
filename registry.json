@@ -33,7 +33,43 @@
           "type": "registry:component"
         },
         {
-          "path": "src/components/atomic-crm/transport/types.ts",
+          "path": "src/components/atomic-crm/transport/UnplannedJobsQueue.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/TransportPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/StopsList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/PlaybackMapView.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/DriverTimelineLanes.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/utils/travelTimeCalculator.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/utils/pickupDropSuggester.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/utils/googleMapsApi.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/utils/draftRouteGenerator.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/transport/hooks/useDraftRouteGeneration.ts",
           "type": "registry:component"
         },
         {
@@ -434,6 +470,10 @@
         },
         {
           "path": "src/components/atomic-crm/payments/PaymentPackageCreate.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/payments/PaymentCreateDialog.tsx",
           "type": "registry:component"
         },
         {
@@ -1106,6 +1146,10 @@
         },
         {
           "path": "src/hooks/usePackageUsage.tsx",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/useOfficeLocation.ts",
           "type": "registry:hook"
         },
         {

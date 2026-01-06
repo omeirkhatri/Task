@@ -197,10 +197,11 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
       }
 
       // Store selected service IDs in custom_fields so we can display only the selected services
+      // ALWAYS save selected_service_ids, even if empty, to prevent bundling issues
       const customFields = appointment?.custom_fields || {};
       const updatedCustomFields = {
         ...customFields,
-        selected_service_ids: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
+        selected_service_ids: selectedServiceIds.length > 0 ? selectedServiceIds : [],
       };
       
       const appointmentData: AppointmentData = {

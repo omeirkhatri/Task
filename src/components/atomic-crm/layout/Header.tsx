@@ -7,7 +7,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { Settings, User, Moon, Sun, RotateCw, LoaderCircle } from "lucide-react";
+import { Settings, User, Moon, Sun, RotateCw, LoaderCircle, Bug } from "lucide-react";
 import { CanAccess } from "ra-core";
 import { Link, matchPath, useLocation } from "react-router";
 import { UserMenu } from "@/components/admin/user-menu";
@@ -161,6 +161,7 @@ const Header = () => {
                 <CanAccess resource="sales" action="list">
                   <UsersMenu />
                 </CanAccess>
+                <BugReportMenu />
                 <ThemeModeMenu />
                 <RefreshMenu />
               </UserMenu>
@@ -250,6 +251,18 @@ const ConfigurationMenu = () => {
       <Link to="/settings" className="flex items-center gap-2">
         <Settings />
         My info
+      </Link>
+    </DropdownMenuItem>
+  );
+};
+
+const BugReportMenu = () => {
+  const { onClose } = useUserMenu() ?? {};
+  return (
+    <DropdownMenuItem asChild onClick={onClose}>
+      <Link to="/bug-reports" className="flex items-center gap-2">
+        <Bug />
+        Report a Bug
       </Link>
     </DropdownMenuItem>
   );

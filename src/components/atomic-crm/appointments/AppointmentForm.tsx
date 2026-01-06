@@ -89,10 +89,10 @@ export const AppointmentForm: React.FC<AppointmentFormProps> = ({
       return types.filter(t => typeof t === "string" && t.startsWith("service_")) as string[];
     }
     
-    // Otherwise, find services that match this appointment type
-    return appointmentTypes
-      .filter(type => type.appointmentType === types[0] || types.includes(type.appointmentType || ""))
-      .map(type => type.value);
+    // Otherwise, find the FIRST service that matches this appointment type
+    // This prevents bundling multiple services that map to the same appointment_type
+    const matchingType = appointmentTypes.find(type => type.appointmentType === types[0] || types.includes(type.appointmentType || ""));
+    return matchingType ? [matchingType.value] : [];
   }, [appointmentTypes]);
 
   const {

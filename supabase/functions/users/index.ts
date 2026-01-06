@@ -405,16 +405,7 @@ Deno.serve(async (req: Request) => {
     );
     
     console.log("[users function] Getting user...");
-    // Try getUser() without token first (uses Authorization header)
-    let getUserResult = await localClient.auth.getUser();
-    
-    // If that fails, try with the token directly
-    if (getUserResult.error) {
-      console.log("[users function] Retrying getUser with token directly...");
-      getUserResult = await localClient.auth.getUser(token);
-    }
-    
-    const { data, error: getUserError } = getUserResult;
+    const { data, error: getUserError } = await localClient.auth.getUser();
     
     if (getUserError) {
       console.error("[users function] Error getting user:", getUserError);

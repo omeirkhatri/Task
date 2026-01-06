@@ -28,6 +28,7 @@ import { NotesPage } from "../notes/NotesPage";
 import { SettingsPage } from "../settings/SettingsPage";
 import { TasksPage } from "../tasks/TasksPage";
 import { AppointmentsPage } from "../appointments/AppointmentsPage";
+import { BugReportPage } from "../bug-reports/BugReportPage";
 import paymentPackages, { paymentTransactions } from "../payments";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
 import { ConfigurationProvider } from "./ConfigurationContext";
@@ -167,6 +168,7 @@ export const CRM = ({
           <Route path={TasksPage.path} element={<TasksPage />} />
           <Route path={NotesPage.path} element={<NotesPage />} />
           <Route path={AppointmentsPage.path} element={<AppointmentsPage />} />
+          <Route path={BugReportPage.path} element={<BugReportPage />} />
         </CustomRoutes>
         <Resource name="lead-journey" options={{ label: "Lead Journey" }} {...deals} />
         <Resource name="contacts" options={{ label: "Leads" }} {...contacts} />

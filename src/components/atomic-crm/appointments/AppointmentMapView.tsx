@@ -343,6 +343,7 @@ export const AppointmentMapView: React.FC<AppointmentMapViewProps> = ({
   const markersRef = useRef<AppointmentMarkerOverlay[]>([]);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
   const warnedPatientsRef = useRef<Set<number>>(new Set());
   const AppointmentMarkerOverlayClassRef = useRef<ReturnType<typeof createAppointmentMarkerOverlay> | null>(null);
   const [scaleDistance, setScaleDistance] = useState<string>("");
@@ -458,10 +459,24 @@ export const AppointmentMapView: React.FC<AppointmentMapViewProps> = ({
   // Initialize Google Maps
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
+    
+    // Debug logging in production to help diagnose issues
+    if (import.meta.env.PROD) {
+      console.debug("Google Maps API Key check:", {
+        exists: !!apiKey,
+        length: apiKey?.length || 0,
+        value: apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined',
+        isUndefinedString: apiKey === 'undefined',
+      });
+    }
+    
+    // Check if API key is missing or is the string "undefined"
+    if (!apiKey || apiKey === 'undefined' || apiKey.trim() === '') {
       console.error("Google Maps API key not found. Please set VITE_GOOGLE_MAPS_API_KEY in your .env file");
+      setApiKeyMissing(true);
       return;
     }
+    setApiKeyMissing(false);
 
     // Helper to check if API is fully loaded
     const isApiReady = () => {
@@ -802,6 +817,36 @@ export const AppointmentMapView: React.FC<AppointmentMapViewProps> = ({
     return (
       <div className="w-full h-[625px] rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
         <div className="text-slate-500 dark:text-slate-400">Loading map...</div>
+      </div>
+    );
+  }
+
+  // Show error message if API key is missing
+  if (apiKeyMissing) {
+    return (
+      <div className="w-full h-[625px] rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+        <div className="max-w-md p-6 bg-white dark:bg-slate-700 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600">
+          <div className="flex items-center gap-3 mb-4">
+            <MapPin className="w-6 h-6 text-amber-500" />
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Google Maps API Key Required
+            </h3>
+          </div>
+          <p className="text-slate-600 dark:text-slate-300 mb-4">
+            The map view requires a Google Maps API key to function. Please configure it in your environment variables.
+          </p>
+          <div className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
+            <p><strong>For Production (Vercel):</strong></p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+              <li>Go to your Vercel project settings</li>
+              <li>Navigate to Environment Variables</li>
+              <li>Add <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY</code> with your API key</li>
+              <li>Redeploy your application</li>
+            </ol>
+            <p className="mt-4"><strong>For Local Development:</strong></p>
+            <p>Add <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">VITE_GOOGLE_MAPS_API_KEY=your_key_here</code> to your <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">.env.local</code> file</p>
+          </div>
+        </div>
       </div>
     );
   }
