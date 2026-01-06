@@ -1316,78 +1316,69 @@ const dataProviderWithCustomMethods = {
     };
   },
   async salesCreate(body: SalesFormData) {
-    const { data, error } = await supabase.functions.invoke<{ data: Sale }>("users", {
-      method: "POST",
-      body,
-    });
-
-    if (error) {
-      // Log the full error object for debugging
-      const errorAny = error as any;
-      console.error("salesCreate.error - Full error object:", {
-        error,
-        errorMessage: error.message,
-        errorName: error.name,
-        errorStack: error.stack,
-        errorAny,
-        context: errorAny?.context,
-        status: errorAny?.context?.status,
-        response: errorAny?.context?.response,
+    // Use direct fetch to get better error details
+    try {
+      const session = await supabase.auth.getSession();
+      const authToken = session.data.session?.access_token;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      console.log("salesCreate - Making request to:", `${supabaseUrl}/functions/v1/users`);
+      console.log("salesCreate - Request body:", body);
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+          "apikey": supabaseKey,
+        },
+        body: JSON.stringify(body),
       });
       
-      logger.error("salesCreate.error", error, { 
-        context: "dataProvider",
-        errorDetails: errorAny,
-      });
+      const responseText = await response.text();
+      console.log("salesCreate - Response status:", response.status);
+      console.log("salesCreate - Response text:", responseText);
       
-      // Try to extract error message from the error response
-      let errorMessage = "Failed to create account manager";
-      
-      // FunctionsHttpError structure: error.context contains response info
-      if (errorAny?.context) {
-        const context = errorAny.context;
-        
-        // Try to get message from context directly
-        if (context?.message) {
-          errorMessage = context.message;
-        }
-        
-        // Check status codes
-        if (context?.status === 401) {
-          errorMessage = "You do not have permission to create users. Administrator access required.";
-        } else if (context?.status === 400) {
-          errorMessage = context?.message || "Invalid request. Please check all required fields are filled.";
-        } else if (context?.status === 500) {
-          errorMessage = context?.message || "Server error occurred while creating user. Please try again.";
-        }
-      }
-      
-      // Try to extract from error message if it contains JSON
-      if (error instanceof Error && error.message) {
+      if (!response.ok) {
+        let errorData: { status?: number; message?: string } = {};
         try {
-          // Look for JSON in the error message
-          const jsonMatch = error.message.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed.message) {
-              errorMessage = parsed.message;
-            }
-          }
+          errorData = JSON.parse(responseText);
         } catch {
-          // Ignore parsing errors
+          errorData = { message: responseText || `HTTP ${response.status}: ${response.statusText}` };
         }
+        
+        console.error("salesCreate - Error response:", {
+          status: response.status,
+          statusText: response.statusText,
+          responseText,
+          errorData,
+        });
+        
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
       
-      throw new Error(errorMessage);
+      const result = JSON.parse(responseText);
+      return result.data || result;
+    } catch (fetchError: any) {
+      // If it's already our Error with message, re-throw it
+      if (fetchError instanceof Error && fetchError.message && !fetchError.message.includes("fetch")) {
+        throw fetchError;
+      }
+      
+      // Otherwise, fall back to supabase client for compatibility
+      console.warn("Direct fetch failed, trying supabase client:", fetchError);
+      const { data, error } = await supabase.functions.invoke<{ data: Sale }>("users", {
+        method: "POST",
+        body,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      return data;
     }
-
-    if (!data) {
-      logger.error("salesCreate.error", "No data returned", { context: "dataProvider" });
-      throw new Error("Failed to create account manager: No data returned");
-    }
-
-    // Edge Function returns { data: sale }, so extract the sale object
-    return data.data || data;
   },
   async salesUpdate(
     id: Identifier,

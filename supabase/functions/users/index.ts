@@ -356,6 +356,8 @@ async function deleteUser(req: Request, currentUserSale: any) {
 
 Deno.serve(async (req: Request) => {
   try {
+    console.log(`[users function] ${req.method} request received`);
+    
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -365,18 +367,33 @@ Deno.serve(async (req: Request) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.error("[users function] No authorization header");
       return createErrorResponse(401, "Authorization header required");
     }
 
+    console.log("[users function] Creating local client...");
     const localClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } },
     );
-    const { data } = await localClient.auth.getUser();
+    
+    console.log("[users function] Getting user...");
+    const { data, error: getUserError } = await localClient.auth.getUser();
+    
+    if (getUserError) {
+      console.error("[users function] Error getting user:", getUserError);
+      return createErrorResponse(401, `Unauthorized: ${getUserError.message}`);
+    }
+    
     if (!data?.user) {
+      console.error("[users function] No user data returned");
       return createErrorResponse(401, "Unauthorized");
     }
+    
+    console.log("[users function] User authenticated:", data.user.id);
+    
+    console.log("[users function] Fetching current user sale...");
     const currentUserSale = await supabaseAdmin
       .from("sales")
       .select("*")
@@ -384,23 +401,32 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (!currentUserSale?.data) {
-      return createErrorResponse(401, "Unauthorized");
+      console.error("[users function] No sales record found for user:", data.user.id);
+      return createErrorResponse(401, "Unauthorized: No sales record found");
     }
+    
+    console.log("[users function] Current user sale found:", currentUserSale.data.id);
+    
     if (req.method === "POST") {
-      return inviteUser(req, currentUserSale.data);
+      console.log("[users function] Calling inviteUser...");
+      return await inviteUser(req, currentUserSale.data);
     }
 
     if (req.method === "PATCH") {
-      return patchUser(req, currentUserSale.data);
+      console.log("[users function] Calling patchUser...");
+      return await patchUser(req, currentUserSale.data);
     }
 
     if (req.method === "DELETE") {
-      return deleteUser(req, currentUserSale.data);
+      console.log("[users function] Calling deleteUser...");
+      return await deleteUser(req, currentUserSale.data);
     }
 
+    console.error("[users function] Method not allowed:", req.method);
     return createErrorResponse(405, "Method Not Allowed");
   } catch (e) {
-    console.error("Unexpected error in Edge Function:", e);
+    console.error("[users function] Unexpected error in Edge Function:", e);
+    console.error("[users function] Error stack:", e instanceof Error ? e.stack : "No stack");
     return createErrorResponse(500, `Internal server error: ${e instanceof Error ? e.message : "Unknown error"}`);
   }
 });
