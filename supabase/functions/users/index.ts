@@ -372,18 +372,55 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log("[users function] Creating local client...");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("[users function] Missing environment variables:", {
+        hasUrl: !!supabaseUrl,
+        hasAnonKey: !!supabaseAnonKey,
+      });
+      return createErrorResponse(500, "Server configuration error");
+    }
+    
+    // Extract the JWT token from the Authorization header
+    const token = authHeader.replace("Bearer ", "");
+    console.log("[users function] Token length:", token.length);
+    console.log("[users function] Token starts with:", token.substring(0, 20) + "...");
+    
     const localClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } },
+      supabaseUrl,
+      supabaseAnonKey,
+      { 
+        global: { 
+          headers: { 
+            Authorization: authHeader,
+          } 
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      },
     );
     
     console.log("[users function] Getting user...");
-    const { data, error: getUserError } = await localClient.auth.getUser();
+    // Try getUser() without token first (uses Authorization header)
+    let getUserResult = await localClient.auth.getUser();
+    
+    // If that fails, try with the token directly
+    if (getUserResult.error) {
+      console.log("[users function] Retrying getUser with token directly...");
+      getUserResult = await localClient.auth.getUser(token);
+    }
+    
+    const { data, error: getUserError } = getUserResult;
     
     if (getUserError) {
       console.error("[users function] Error getting user:", getUserError);
-      return createErrorResponse(401, `Unauthorized: ${getUserError.message}`);
+      console.error("[users function] Error code:", getUserError.status);
+      console.error("[users function] Error message:", getUserError.message);
+      return createErrorResponse(401, `Unauthorized: ${getUserError.message || "Invalid JWT"}`);
     }
     
     if (!data?.user) {
