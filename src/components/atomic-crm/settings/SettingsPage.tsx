@@ -57,6 +57,7 @@ import { TagChip } from "../tags/TagChip";
 import { colors } from "../tags/colors";
 import { RoundButton } from "../tags/RoundButton";
 import { useTimezone } from "@/hooks/useTimezone";
+import { useOfficeLocation } from "@/hooks/useOfficeLocation";
 import {
   Select,
   SelectContent,
@@ -1016,8 +1017,15 @@ const UsersManagementSection = () => {
 // General Settings Section
 const GeneralSettingsSection = () => {
   const { timezone, setTimezone, offsetLabel, displayName } = useTimezone();
+  const { officeLocation, isLoading: officeLocationLoading, updateOfficeLocation } = useOfficeLocation();
   const notify = useNotify();
   const [currentTime, setCurrentTime] = React.useState(new Date());
+  const [isEditingOffice, setIsEditingOffice] = React.useState(false);
+  const [officeFormData, setOfficeFormData] = React.useState({
+    latitude: "",
+    longitude: "",
+    address: "",
+  });
 
   // Update current time display every second
   React.useEffect(() => {
@@ -1040,6 +1048,55 @@ const GeneralSettingsSection = () => {
     setTimeout(() => {
       window.location.reload();
     }, 500);
+  };
+
+  // Initialize office form data when editing
+  React.useEffect(() => {
+    if (isEditingOffice && officeLocation) {
+      setOfficeFormData({
+        latitude: officeLocation.latitude.toString(),
+        longitude: officeLocation.longitude.toString(),
+        address: officeLocation.address,
+      });
+    }
+  }, [isEditingOffice, officeLocation]);
+
+  const handleOfficeLocationSave = async () => {
+    try {
+      const lat = parseFloat(officeFormData.latitude);
+      const lng = parseFloat(officeFormData.longitude);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        notify("Please enter valid numeric coordinates", { type: "error" });
+        return;
+      }
+
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        notify("Invalid coordinates. Latitude must be -90 to 90, longitude -180 to 180", { type: "error" });
+        return;
+      }
+
+      await updateOfficeLocation({
+        latitude: lat,
+        longitude: lng,
+        address: officeFormData.address || "Office",
+      });
+
+      setIsEditingOffice(false);
+    } catch (error) {
+      console.error("Error updating office location:", error);
+    }
+  };
+
+  const handleOfficeLocationCancel = () => {
+    setIsEditingOffice(false);
+    if (officeLocation) {
+      setOfficeFormData({
+        latitude: officeLocation.latitude.toString(),
+        longitude: officeLocation.longitude.toString(),
+        address: officeLocation.address,
+      });
+    }
   };
 
   // Common timezones with their display names
@@ -1083,6 +1140,125 @@ const GeneralSettingsSection = () => {
               <p>Current timezone: <strong>{displayName}</strong> ({offsetLabel})</p>
               <p className="mt-1">Current time: <strong>{formatCrmDateTime(currentTime)}</strong></p>
             </div>
+          </div>
+
+          {/* Office Location Settings */}
+          <div className="space-y-2 border-t pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="office-location">Office Location</Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Set your office coordinates for transport routing and map displays.
+                </p>
+              </div>
+              {!isEditingOffice && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditingOffice(true)}
+                  disabled={officeLocationLoading}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+            </div>
+
+            {isEditingOffice ? (
+              <div className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="office-latitude">Latitude</Label>
+                    <Input
+                      id="office-latitude"
+                      type="number"
+                      step="any"
+                      value={officeFormData.latitude}
+                      onChange={(e) =>
+                        setOfficeFormData({ ...officeFormData, latitude: e.target.value })
+                      }
+                      placeholder="25.2048"
+                    />
+                    <p className="text-xs text-muted-foreground">Range: -90 to 90</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="office-longitude">Longitude</Label>
+                    <Input
+                      id="office-longitude"
+                      type="number"
+                      step="any"
+                      value={officeFormData.longitude}
+                      onChange={(e) =>
+                        setOfficeFormData({ ...officeFormData, longitude: e.target.value })
+                      }
+                      placeholder="55.2708"
+                    />
+                    <p className="text-xs text-muted-foreground">Range: -180 to 180</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="office-address">Address</Label>
+                  <Input
+                    id="office-address"
+                    type="text"
+                    value={officeFormData.address}
+                    onChange={(e) =>
+                      setOfficeFormData({ ...officeFormData, address: e.target.value })
+                    }
+                    placeholder="Office, Dubai, UAE"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleOfficeLocationSave}
+                    size="sm"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleOfficeLocationCancel}
+                    size="sm"
+                  >
+                    <CircleX className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-md">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Latitude</p>
+                    <p className="font-medium">{officeLocation?.latitude.toFixed(6)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Longitude</p>
+                    <p className="font-medium">{officeLocation?.longitude.toFixed(6)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Address</p>
+                    <p className="font-medium">{officeLocation?.address || "Not set"}</p>
+                  </div>
+                </div>
+                {officeLocation && (
+                  <div className="mt-3">
+                    <a
+                      href={`https://www.google.com/maps?q=${officeLocation.latitude},${officeLocation.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      View on Google Maps →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

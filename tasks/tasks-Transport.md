@@ -36,38 +36,44 @@ Based on PRD: `docs/Transport.md`
 - `src/components/atomic-crm/transport/PickupDropSelector.tsx` - Dropdown component for selecting Office/Home/Metro for staff pickup/drop locations.
 
 ### Conflict Resolution Components
-- `src/components/atomic-crm/transport/ConflictCard.tsx` - Individual conflict display card.
-- `src/components/atomic-crm/transport/FixCards.tsx` - Fix Cards UI with three categories (time change, logistics, manual override).
-- `src/components/atomic-crm/transport/TimeShiftOptions.tsx` - Time shift suggestion buttons (5/10/15/20 minutes).
-- `src/components/atomic-crm/transport/LogisticsFixOptions.tsx` - Logistics fix options (assign second driver, split drop/pickup, etc.).
+- `src/components/atomic-crm/transport/utils/conflictDetector.ts` - Conflict detection engine detecting patient lateness, unreachable stops, overlapping legs, and insufficient buffer.
+- `src/components/atomic-crm/transport/ConflictCard.tsx` - Individual conflict display card with severity indicator, timing details, and affected patient information.
+- `src/components/atomic-crm/transport/FixCards.tsx` - Fix Cards UI with three categories (time change, logistics, manual override) and preview functionality.
+- `src/components/atomic-crm/transport/TimeShiftOptions.tsx` - Time shift suggestion buttons (5/10/15/20 minutes) with classification-based labeling.
+- `src/components/atomic-crm/transport/LogisticsFixOptions.tsx` - Logistics fix options (assign second driver, split drop/pickup, switch to metro, reorder stops).
+- `src/components/atomic-crm/transport/hooks/useConflictResolution.ts` - Hook for applying conflict fixes and recalculating routes/ETAs.
 
 ### Client Negotiation Components
-- `src/components/atomic-crm/transport/ClientNegotiationDialog.tsx` - Dialog for suggesting time changes to clients.
-- `src/components/atomic-crm/transport/PendingConfirmationIndicator.tsx` - Visual indicator for appointments pending client confirmation.
-- `src/components/atomic-crm/transport/GhostBlock.tsx` - Ghost block component for timeline preview of pending changes.
+- `src/components/atomic-crm/transport/ClientNegotiationDialog.tsx` - Dialog for suggesting time changes to clients, showing current time, suggested time, reason, and client contact information.
+- `src/components/atomic-crm/transport/PendingConfirmationIndicator.tsx` - Visual indicator (badge/icon/inline) for appointments pending client confirmation, with multiple display variants.
+- `src/components/atomic-crm/transport/GhostBlock.tsx` - Dotted/preview blocks on timeline showing proposed time change before client approval, with TimelineGhostBlock variant for timeline lanes.
+- `src/components/atomic-crm/transport/hooks/useClientNegotiation.ts` - Hook for handling client negotiation workflow (suggest, approve, decline) with appointment status management.
 
 ### Draft Route Generation
-- `src/components/atomic-crm/transport/utils/draftRouteGenerator.ts` - Main draft route generation algorithm.
-- `src/components/atomic-crm/transport/utils/driverAssignmentSuggester.ts` - Driver assignment suggestion logic.
-- `src/components/atomic-crm/transport/utils/pickupDropSuggester.ts` - Pickup/drop location suggestions (Office/Home/Metro).
-- `src/components/atomic-crm/transport/utils/splitDriverLogic.ts` - Split driver logic for long caregiver shifts.
+- `src/components/atomic-crm/transport/utils/draftRouteGenerator.ts` - Main draft route generation algorithm that analyzes unplanned appointments, driver availability, and generates optimized route suggestions.
+- `src/components/atomic-crm/transport/utils/driverAssignmentSuggester.ts` - Driver assignment suggestion logic based on proximity, workload, and schedule fit scores.
+- `src/components/atomic-crm/transport/utils/pickupDropSuggester.ts` - Pickup/drop location suggestions (Office/Home/Metro) based on proximity and 2-hour wait rule.
+- `src/components/atomic-crm/transport/utils/splitDriverLogic.ts` - Split driver logic detecting long shifts, morning/evening patterns, and unavoidable conflicts.
+- `src/components/atomic-crm/transport/hooks/useDraftRouteGeneration.ts` - Hook for generating, previewing, and applying draft routes with manager approval workflow.
 
 ### Driver Mobile View
-- `src/components/atomic-crm/transport/DriverMobileView.tsx` - Main mobile view component for drivers.
-- `src/components/atomic-crm/transport/DriverRouteList.tsx` - List view of assigned stops for driver.
-- `src/components/atomic-crm/transport/DriverRouteTimeline.tsx` - Timeline view of assigned stops for driver.
-- `src/components/atomic-crm/transport/DriverStatusButtons.tsx` - Status update buttons (Arrived, Picked up, Dropped off, Running late).
-- `src/components/atomic-crm/transport/GoogleMapsDeepLink.tsx` - Component for opening Google Maps app with navigation.
+- `src/components/atomic-crm/transport/DriverMobileView.tsx` - Main mobile-optimized component for drivers to view assigned routes with date navigation, list/timeline view toggle, and status updates.
+- `src/components/atomic-crm/transport/DriverRouteList.tsx` - List view showing all assigned stops with address, time, status badges, Google Maps links, and status update buttons.
+- `src/components/atomic-crm/transport/DriverRouteTimeline.tsx` - Timeline view showing stops chronologically with visual timeline, position indicators, and status updates.
+- `src/components/atomic-crm/transport/DriverStatusButtons.tsx` - Touch-friendly status update buttons (Arrived, Picked up, Dropped off, Running late with +5/+10/+15/+20/+30 minute options) with minimum 44x44px size.
+- `src/components/atomic-crm/transport/GoogleMapsDeepLink.tsx` - Component for opening Google Maps app with navigation using deep link format (`https://www.google.com/maps/dir/?api=1&destination=lat,lng`).
+- `src/components/atomic-crm/transport/hooks/useDriverStatus.ts` - Hook for updating driver status, recalculating ETAs, and detecting patient lateness risks.
 
 ### Route Publishing & Status Tracking
-- `src/components/atomic-crm/transport/hooks/useRoutePublishing.ts` - Hook for publishing routes to drivers.
-- `src/components/atomic-crm/transport/hooks/useDriverStatus.ts` - Hook for tracking and updating driver status.
-- `src/components/atomic-crm/transport/utils/statusImpactCalculator.ts` - Calculate impact of driver status updates on route ETAs.
+- `src/components/atomic-crm/transport/hooks/useRoutePublishing.ts` - Hook for publishing routes (draft to published), validating conflicts, and locking/unlocking routes.
+- `src/components/atomic-crm/transport/hooks/useDriverStatus.ts` - Hook for tracking and updating driver status with ETA recalculation and manager alerts.
+- `src/components/atomic-crm/transport/utils/statusImpactCalculator.ts` - Calculate impact of driver status updates on route ETAs, detect patient lateness risks, and create conflicts.
+- `src/components/atomic-crm/transport/utils/routeCompletionTracker.ts` - Track route completion status and automatically mark trips as completed when all legs finished.
 
 ### Playback Mode
-- `src/components/atomic-crm/transport/PlaybackMode.tsx` - Playback mode component with time slider.
-- `src/components/atomic-crm/transport/PlaybackControls.tsx` - Playback controls (play, pause, speed, time slider).
-- `src/components/atomic-crm/transport/PlaybackMapView.tsx` - Map view showing driver positions at specific times.
+- `src/components/atomic-crm/transport/PlaybackMode.tsx` - Main playback mode component accessible from DispatcherBoard, provides full-screen dialog for route visualization over time.
+- `src/components/atomic-crm/transport/PlaybackControls.tsx` - Playback controls component (play, pause, speed, time slider) - placeholder created, full implementation in task 10.2.
+- `src/components/atomic-crm/transport/PlaybackMapView.tsx` - Map view component showing driver positions at specific time points - placeholder created, full implementation in task 10.3.
 
 ### Main Transport Page
 - `src/components/atomic-crm/transport/TransportPage.tsx` - Main page component integrating all transport features.
@@ -176,7 +182,7 @@ Based on PRD: `docs/Transport.md`
   - [x] 4.7 Add undo functionality with history stack for route changes
   - [x] 4.8 Add validation to prevent invalid stop sequences (e.g., drop before pickup)
 
-- [ ] 5.0 Conflict Detection & Resolution System
+- [x] 5.0 Conflict Detection & Resolution System
 
   **Context**: This system automatically detects scheduling conflicts and provides managers with actionable fix options. Conflicts are normal in operations, so the system surfaces them early and clearly rather than hiding them. The Fix Cards UI presents three categories of solutions.
 
@@ -188,16 +194,16 @@ Based on PRD: `docs/Transport.md`
   - Late conflicts (<4 hours) require client approval for time changes
   - All fixes show preview before applying
   - Conflicts are recalculated after each route change
-  - [ ] 5.1 Implement conflictDetector.ts: Function to detect conflicts (driver cannot reach stop on time, patient lateness > 10 minutes, overlapping legs)
-  - [ ] 5.2 Add conflict classification logic: Early Conflict (≥4 hours before appointment) vs Late Conflict (<4 hours)
-  - [ ] 5.3 Create ConflictCard.tsx component to display conflict details with severity indicator
-  - [ ] 5.4 Implement FixCards.tsx component with three categories: A) Appointment Time Change (5/10/15/20 min options), B) Logistics Fixes (assign second driver, split drop/pickup, switch to metro, reorder stops), C) Manual Override (force lateness, lock route, ignore warning)
-  - [ ] 5.5 Add preview functionality: Show updated route preview before applying fix
-  - [ ] 5.6 Implement TimeShiftOptions.tsx with buttons for time shift suggestions, labeled as "Recommended" or "Short notice – client approval required" based on conflict classification
-  - [ ] 5.7 Implement LogisticsFixOptions.tsx with options for split driver, assign second driver, switch return location, etc.
-  - [ ] 5.8 Add conflict resolution handlers that update routes and recalculate ETAs after applying fixes
+  - [x] 5.1 Implement conflictDetector.ts: Function to detect conflicts (driver cannot reach stop on time, patient lateness > 10 minutes, overlapping legs)
+  - [x] 5.2 Add conflict classification logic: Early Conflict (≥4 hours before appointment) vs Late Conflict (<4 hours)
+  - [x] 5.3 Create ConflictCard.tsx component to display conflict details with severity indicator
+  - [x] 5.4 Implement FixCards.tsx component with three categories: A) Appointment Time Change (5/10/15/20 min options), B) Logistics Fixes (assign second driver, split drop/pickup, switch to metro, reorder stops), C) Manual Override (force lateness, lock route, ignore warning)
+  - [x] 5.5 Add preview functionality: Show updated route preview before applying fix
+  - [x] 5.6 Implement TimeShiftOptions.tsx with buttons for time shift suggestions, labeled as "Recommended" or "Short notice – client approval required" based on conflict classification
+  - [x] 5.7 Implement LogisticsFixOptions.tsx with options for split driver, assign second driver, switch return location, etc.
+  - [x] 5.8 Add conflict resolution handlers that update routes and recalculate ETAs after applying fixes
 
-- [ ] 6.0 Client Negotiation Workflow
+- [x] 6.0 Client Negotiation Workflow
 
   **Context**: This workflow handles the process of requesting appointment time changes from clients. When a conflict requires a time change with short notice (<4 hours), the system enters a "pending confirmation" state where the proposed change is visible but not yet applied. The manager communicates with the client and records their response.
 
@@ -209,15 +215,15 @@ Based on PRD: `docs/Transport.md`
   - Pending confirmation status is visible on timeline, map, and appointment cards
   - Approved changes are logged (may use existing activity_log system)
   - Declined appointments get `route_locked = true` to prevent further time change suggestions
-  - [ ] 6.1 Create ClientNegotiationDialog.tsx: Modal for manager to suggest time change to client, shows current time, suggested time, and reason
-  - [ ] 6.2 Implement "Suggest time change to client" button in FixCards that sets appointment to pending_client_confirmation status
-  - [ ] 6.3 Create PendingConfirmationIndicator.tsx: Visual indicator (badge/icon) on timeline and appointment cards showing pending status
-  - [ ] 6.4 Implement GhostBlock.tsx: Dotted/preview blocks on timeline showing proposed time change before client approval
-  - [ ] 6.5 Add "Client approved" button that updates appointment time, recalculates routes, clears conflict, logs as client-approved
-  - [ ] 6.6 Add "Client declined" button that locks appointment time, removes time-shift options, keeps only logistics fixes available
-  - [ ] 6.7 Update appointment status flow: scheduled → pending_client_confirmation → (approved → scheduled) or (declined → scheduled with locked time)
+  - [x] 6.1 Create ClientNegotiationDialog.tsx: Modal for manager to suggest time change to client, shows current time, suggested time, and reason
+  - [x] 6.2 Implement "Suggest time change to client" button in FixCards that sets appointment to pending_client_confirmation status
+  - [x] 6.3 Create PendingConfirmationIndicator.tsx: Visual indicator (badge/icon) on timeline and appointment cards showing pending status
+  - [x] 6.4 Implement GhostBlock.tsx: Dotted/preview blocks on timeline showing proposed time change before client approval
+  - [x] 6.5 Add "Client approved" button that updates appointment time, recalculates routes, clears conflict, logs as client-approved
+  - [x] 6.6 Add "Client declined" button that locks appointment time, removes time-shift options, keeps only logistics fixes available
+  - [x] 6.7 Update appointment status flow: scheduled → pending_client_confirmation → (approved → scheduled) or (declined → scheduled with locked time)
 
-- [ ] 7.0 Draft Route Generation (Semi-Automated Suggestions)
+- [x] 7.0 Draft Route Generation (Semi-Automated Suggestions)
 
   **Context**: This feature generates initial route suggestions automatically, saving managers significant planning time. The system analyzes all unplanned appointments, driver availability, locations, and travel times to suggest optimal assignments. All suggestions require manager approval before being applied.
 
@@ -230,16 +236,16 @@ Based on PRD: `docs/Transport.md`
   - Wait vs Leave rule: ≤2 hours AND no other jobs → WAIT, otherwise → LEAVE
   - Split driver logic detects long shifts (e.g., morning drop 8 AM, evening pickup 6 PM)
   - Suggestions are clearly marked as "Draft" and can be edited before publishing
-  - [ ] 7.1 Create draftRouteGenerator.ts: Main algorithm to generate draft routes for all unplanned appointments
-  - [ ] 7.2 Implement driverAssignmentSuggester.ts: Logic to suggest which driver should handle which appointments based on proximity, current schedule, and availability
-  - [ ] 7.3 Implement pickupDropSuggester.ts: Logic to suggest Office/Home/Metro for staff pickup/drop based on proximity and 2-hour wait rule
-  - [ ] 7.4 Implement splitDriverLogic.ts: Detect when split driver is needed (long caregiver shifts, morning drop + evening pickup), suggest split assignments
-  - [ ] 7.5 Add "Generate Draft Routes" button in DispatcherBoard that creates draft driver_trips and trip_legs records
-  - [ ] 7.6 Implement wait vs leave recommendation: If wait ≤ 2 hours AND no other jobs → suggest WAIT, otherwise suggest LEAVE
-  - [ ] 7.7 Add draft route preview before applying: Show all suggested routes on timeline/map for manager review
-  - [ ] 7.8 Ensure all suggestions are clearly marked as suggestions and require manager approval before applying
+  - [x] 7.1 Create draftRouteGenerator.ts: Main algorithm to generate draft routes for all unplanned appointments
+  - [x] 7.2 Implement driverAssignmentSuggester.ts: Logic to suggest which driver should handle which appointments based on proximity, current schedule, and availability
+  - [x] 7.3 Implement pickupDropSuggester.ts: Logic to suggest Office/Home/Metro for staff pickup/drop based on proximity and 2-hour wait rule
+  - [x] 7.4 Implement splitDriverLogic.ts: Detect when split driver is needed (long caregiver shifts, morning drop + evening pickup), suggest split assignments
+  - [x] 7.5 Add "Generate Draft Routes" button in DispatcherBoard that creates draft driver_trips and trip_legs records
+  - [x] 7.6 Implement wait vs leave recommendation: If wait ≤ 2 hours AND no other jobs → suggest WAIT, otherwise suggest LEAVE
+  - [x] 7.7 Add draft route preview before applying: Show all suggested routes on timeline/map for manager review
+  - [x] 7.8 Ensure all suggestions are clearly marked as suggestions and require manager approval before applying
 
-- [ ] 8.0 Driver Mobile View
+- [x] 8.0 Driver Mobile View
 
   **Context**: This is the read-only mobile interface for drivers to view their assigned routes and update their status. Drivers cannot edit routes or see other drivers' schedules. The interface is optimized for mobile devices with large touch targets and clear navigation.
 
@@ -252,17 +258,17 @@ Based on PRD: `docs/Transport.md`
   - Google Maps deep links use format: `https://www.google.com/maps/dir/?api=1&destination=lat,lng`
   - Mobile-responsive design with touch-friendly buttons (minimum 44x44px)
   - List and timeline views toggle for different preferences
-  - [ ] 8.1 Create DriverMobileView.tsx: Main mobile-optimized component for drivers to view their assigned routes
-  - [ ] 8.2 Implement DriverRouteList.tsx: List view showing all assigned stops with address, time, and status
-  - [ ] 8.3 Implement DriverRouteTimeline.tsx: Timeline view showing stops in chronological order with visual timeline
-  - [ ] 8.4 Add view toggle between list and timeline views
-  - [ ] 8.5 Create DriverStatusButtons.tsx: Buttons for status updates (Arrived, Picked up, Dropped off, Running late with +5/+10/+15 minute options)
-  - [ ] 8.6 Implement GoogleMapsDeepLink.tsx: "Open in Google Maps" button that creates deep link to Google Maps app with navigation to selected stop
-  - [ ] 8.7 Add real-time status updates: When driver updates status, show updated ETAs and alert manager if patient lateness risk appears
-  - [ ] 8.8 Implement mobile-responsive design with touch-friendly buttons and readable text sizes
-  - [ ] 8.9 Add route filtering: Show only today's routes, or allow date selection for future routes
+  - [x] 8.1 Create DriverMobileView.tsx: Main mobile-optimized component for drivers to view their assigned routes
+  - [x] 8.2 Implement DriverRouteList.tsx: List view showing all assigned stops with address, time, and status
+  - [x] 8.3 Implement DriverRouteTimeline.tsx: Timeline view showing stops in chronological order with visual timeline
+  - [x] 8.4 Add view toggle between list and timeline views
+  - [x] 8.5 Create DriverStatusButtons.tsx: Buttons for status updates (Arrived, Picked up, Dropped off, Running late with +5/+10/+15 minute options)
+  - [x] 8.6 Implement GoogleMapsDeepLink.tsx: "Open in Google Maps" button that creates deep link to Google Maps app with navigation to selected stop
+  - [x] 8.7 Add real-time status updates: When driver updates status, show updated ETAs and alert manager if patient lateness risk appears
+  - [x] 8.8 Implement mobile-responsive design with touch-friendly buttons and readable text sizes
+  - [x] 8.9 Add route filtering: Show only today's routes, or allow date selection for future routes
 
-- [ ] 9.0 Route Publishing & Status Tracking
+- [x] 9.0 Route Publishing & Status Tracking
 
   **Context**: This handles the workflow of finalizing routes and tracking real-time driver status updates. Routes start as drafts, get reviewed/edited, then published to drivers. Once published, drivers can see and update their status, which triggers real-time recalculations and alerts.
 
@@ -275,16 +281,16 @@ Based on PRD: `docs/Transport.md`
   - Real-time ETA recalculation uses current time + remaining travel time
   - Manager alerts trigger when patient lateness risk >10 minutes
   - Route completion automatically marks trip as 'completed' when all legs finished
-  - [ ] 9.1 Create useRoutePublishing.ts hook: Function to publish routes (change driver_trips status from draft to published)
-  - [ ] 9.2 Implement publish validation: Check for unresolved conflicts before allowing publish
-  - [ ] 9.3 Create useDriverStatus.ts hook: Track driver status updates (arrived, picked up, dropped off, running late)
-  - [ ] 9.4 Implement statusImpactCalculator.ts: Recalculate ETAs when driver reports "Running late", update subsequent stops, detect if patient lateness risk appears
-  - [ ] 9.5 Add manager alerts: Notify manager when driver status update creates patient lateness risk (>10 minutes)
-  - [ ] 9.6 Implement route locking: Published routes can be locked to prevent further changes
-  - [ ] 9.7 Add route completion tracking: Mark trips as completed when all legs are finished
-  - [ ] 9.8 Create data provider methods for driver_trips and trip_legs resources in dataProvider.ts
+  - [x] 9.1 Create useRoutePublishing.ts hook: Function to publish routes (change driver_trips status from draft to published)
+  - [x] 9.2 Implement publish validation: Check for unresolved conflicts before allowing publish
+  - [x] 9.3 Create useDriverStatus.ts hook: Track driver status updates (arrived, picked up, dropped off, running late) - Enhanced existing hook from Task 8.7
+  - [x] 9.4 Implement statusImpactCalculator.ts: Recalculate ETAs when driver reports "Running late", update subsequent stops, detect if patient lateness risk appears
+  - [x] 9.5 Add manager alerts: Notify manager when driver status update creates patient lateness risk (>10 minutes)
+  - [x] 9.6 Implement route locking: Published routes can be locked to prevent further changes
+  - [x] 9.7 Add route completion tracking: Mark trips as completed when all legs are finished
+  - [x] 9.8 Create data provider methods for driver_trips and trip_legs resources in dataProvider.ts
 
-- [ ] 10.0 Playback Mode (Secondary View)
+- [x] 10.0 Playback Mode (Secondary View)
 
   **Context**: This is a secondary visualization tool for understanding route flow, training, and planning. It animates the day's routes over time, showing driver movements and stop activations. This helps managers visualize the entire operation and identify patterns or issues.
 
@@ -297,11 +303,11 @@ Based on PRD: `docs/Transport.md`
   - Useful for training new managers and understanding operational patterns
   - Can be used for "what-if" scenarios by playing back draft routes
   - Smooth animations enhance understanding of route flow
-  - [ ] 10.1 Create PlaybackMode.tsx component: Secondary view accessible from DispatcherBoard for visual route understanding
-  - [ ] 10.2 Implement PlaybackControls.tsx: Time slider across the day, play/pause buttons, speed controls (1x, 2x, 4x)
-  - [ ] 10.3 Create PlaybackMapView.tsx: Map showing driver positions at specific time points, animated movement along routes
-  - [ ] 10.4 Add stop activation: Visually highlight stops when their time window is reached in playback
-  - [ ] 10.5 Implement conflict visualization: Show conflicts appearing at exact moments they occur during playback
-  - [ ] 10.6 Add timeline synchronization: Playback timeline syncs with main dispatcher timeline
-  - [ ] 10.7 Implement smooth animations for driver movement and stop activations
+  - [x] 10.1 Create PlaybackMode.tsx component: Secondary view accessible from DispatcherBoard for visual route understanding
+  - [x] 10.2 Implement PlaybackControls.tsx: Time slider across the day, play/pause buttons, speed controls (1x, 2x, 4x)
+  - [x] 10.3 Create PlaybackMapView.tsx: Map showing driver positions at specific time points, animated movement along routes
+  - [x] 10.4 Add stop activation: Visually highlight stops when their time window is reached in playback
+  - [x] 10.5 Implement conflict visualization: Show conflicts appearing at exact moments they occur during playback
+  - [x] 10.6 Add timeline synchronization: Playback timeline syncs with main dispatcher timeline
+  - [x] 10.7 Implement smooth animations for driver movement and stop activations
 

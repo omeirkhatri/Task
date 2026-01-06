@@ -33,6 +33,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/transport/types.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/tasks/TasksPage.tsx",
           "type": "registry:component"
         },

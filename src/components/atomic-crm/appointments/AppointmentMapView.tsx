@@ -6,6 +6,7 @@ import type { Appointment, Contact, Staff } from "../types";
 import { useGetList } from "ra-core";
 import { AppointmentInfoWindow } from "./AppointmentInfoWindow";
 import { extractCrmTime } from "../misc/timezone";
+import { useOfficeLocation } from "@/hooks/useOfficeLocation";
 
 // Google Maps types
 declare global {
@@ -23,7 +24,7 @@ type AppointmentMapViewProps = {
   onDateChange?: (date: Date) => void;
 };
 
-// Default center (Dubai)
+// Default center (Dubai) - fallback if office location not available
 const DEFAULT_CENTER = { lat: 25.2048, lng: 55.2708 };
 // Calculate zoom level for 1.5km scale (approximately zoom 13)
 const DEFAULT_ZOOM = 13;
@@ -62,10 +63,14 @@ const getPatientCoordinates = (patient: Contact | null): { lat: number; lng: num
 };
 
 // Helper to get fallback coordinates with random offset
-const getFallbackCoordinates = (): { lat: number; lng: number } => {
+// Takes office location as parameter to use configured office location
+const getFallbackCoordinates = (officeLocation?: { latitude: number; longitude: number } | null): { lat: number; lng: number } => {
+  const center = officeLocation 
+    ? { lat: officeLocation.latitude, lng: officeLocation.longitude }
+    : DEFAULT_CENTER;
   const offsetLat = (Math.random() - 0.5) * 0.01; // ~1km offset
   const offsetLng = (Math.random() - 0.5) * 0.01;
-  return { lat: DEFAULT_CENTER.lat + offsetLat, lng: DEFAULT_CENTER.lng + offsetLng };
+  return { lat: center.lat + offsetLat, lng: center.lng + offsetLng };
 };
 
 // Helper to format time as HH:MM in CRM timezone
@@ -364,6 +369,9 @@ export const AppointmentMapView: React.FC<AppointmentMapViewProps> = ({
     });
   }, [appointments, selectedDate]);
 
+  // Get office location from settings
+  const { officeLocation } = useOfficeLocation();
+
   // Fetch patients and staff
   const { data: patientsData } = useGetList<Contact>("clients", {
     pagination: { page: 1, perPage: 10000 },
@@ -415,7 +423,7 @@ export const AppointmentMapView: React.FC<AppointmentMapViewProps> = ({
       let coords = getPatientCoordinates(patient);
       
       if (!coords) {
-        coords = getFallbackCoordinates();
+        coords = getFallbackCoordinates(officeLocation);
         if (patient && !warnedPatientsRef.current.has(patient.id)) {
           warnedPatientsRef.current.add(patient.id);
           console.warn(`Patient ${patient.id} missing coordinates, using fallback location`);
@@ -445,7 +453,7 @@ export const AppointmentMapView: React.FC<AppointmentMapViewProps> = ({
     });
     
     return markers;
-  }, [filteredAppointments, patientsMap]);
+  }, [filteredAppointments, patientsMap, officeLocation]);
 
   // Initialize Google Maps
   useEffect(() => {

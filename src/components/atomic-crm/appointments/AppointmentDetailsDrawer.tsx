@@ -1,8 +1,7 @@
-import React from "react";
-import { X, User, Calendar, Clock, Stethoscope, Car, FileText, MapPin, Phone, ExternalLink, Printer, Copy, Edit, Trash2, CreditCard } from "lucide-react";
+import React, { useState } from "react";
+import { X, User, Calendar, Clock, Stethoscope, Car, FileText, MapPin, Phone, ExternalLink, Printer, Copy, Edit, Trash2, CreditCard, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO } from "date-fns";
 import type { Appointment, PaymentPackage, Service } from "../types";
 import { APPOINTMENT_STATUSES } from "./types";
 import { useAppointmentTypes } from "./useAppointmentTypes";
@@ -11,6 +10,7 @@ import type { Contact, Staff } from "../types";
 import { formatCrmDate, formatCrmTime } from "../misc/timezone";
 import { Link } from "react-router";
 import { usePackageUsage } from "@/hooks/usePackageUsage";
+import { PaymentCreateDialog } from "../payments/PaymentCreateDialog";
 
 type AppointmentDetailsDrawerProps = {
   open: boolean;
@@ -51,6 +51,9 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
   
   // Get package usage if package exists
   const { sessionsUsed, hoursUsed } = usePackageUsage(paymentPackage?.id);
+
+  // State for payment creation dialog
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   // Get all assigned staff from staff_ids array
   const assignedStaff = React.useMemo(() => {
@@ -132,15 +135,15 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
 
       {/* Drawer */}
       <div
-        className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl z-50 transition-transform duration-200 ease-in-out ${
+        className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white dark:bg-slate-900 shadow-2xl z-50 transition-transform duration-200 ease-in-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         {/* Header */}
-        <div className="bg-gray-50 border-b border-gray-200 p-6">
+        <div className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Appointment Details</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Appointment Details</h2>
               {appointmentTypesList.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mt-1">
                   {appointmentTypesList.map((type) => (
@@ -150,14 +153,14 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                         backgroundColor: type.color + "20",
                         color: type.color,
                       }}
-                      className="text-xs"
+                      className="text-xs dark:opacity-90"
                     >
                       {type.label}
                     </Badge>
                   ))}
                 </div>
               ) : appointmentType ? (
-                <p className="text-gray-600 mt-1">{appointmentType.label}</p>
+                <p className="text-gray-600 dark:text-slate-400 mt-1">{appointmentType.label}</p>
               ) : null}
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -169,22 +172,22 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
         {/* Content */}
         <div className="overflow-y-auto h-[calc(100%-200px)] p-6 space-y-6">
           {/* Patient Information */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <User className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold">Patient Information</h3>
+              <User className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Patient Information</h3>
             </div>
             {patient && (
               <div className="space-y-2">
-                <p className="font-medium">{patient.first_name} {patient.last_name}</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100">{patient.first_name} {patient.last_name}</p>
                 {patient.phone_jsonb && patient.phone_jsonb.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                     <Phone className="w-4 h-4" />
                     <span>{patient.phone_jsonb[0].number}</span>
                   </div>
                 )}
                 {(patient.building_street || patient.area) && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
                     <MapPin className="w-4 h-4" />
                     <span>
                       {[patient.building_street, patient.area, patient.city]
@@ -198,7 +201,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                     href={patient.google_maps_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                    className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     <ExternalLink className="w-4 h-4" />
                     Open in Google Maps
@@ -209,40 +212,40 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
           </div>
 
           {/* Appointment Details */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold">Appointment Details</h3>
+              <Calendar className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Appointment Details</h3>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Date</p>
-                <p className="font-medium">{formatCrmDate(appointment.appointment_date)}</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Date</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100">{formatCrmDate(appointment.appointment_date)}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Time</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Time</p>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-gray-600" />
-                  <p className="font-medium">
+                  <Clock className="w-4 h-4 text-gray-600 dark:text-slate-400" />
+                  <p className="font-medium text-gray-900 dark:text-slate-100">
                     {startTimeStr && endTimeStr ? `${startTimeStr} - ${endTimeStr}` : "N/A"}
                   </p>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Duration</p>
-                <p className="font-medium">{appointment.duration_minutes} minutes</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Duration</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100">{appointment.duration_minutes} minutes</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Status</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Status</p>
                 {status && (
                   <Badge
                     className={`${
                       status.value === "scheduled"
-                        ? "bg-yellow-100 text-yellow-700"
+                        ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
                         : status.value === "cancelled"
-                        ? "bg-red-100 text-red-700"
+                        ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                         : status.value === "completed"
-                        ? "bg-green-100 text-green-700"
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
                         : ""
                     }`}
                   >
@@ -251,7 +254,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                 )}
               </div>
               <div>
-                <p className="text-sm text-gray-600">Type</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400">Type</p>
                 {appointmentTypesList.length > 0 ? (
                   <div className="flex flex-wrap gap-2 mt-1">
                     {appointmentTypesList.map((type) => (
@@ -261,6 +264,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                           backgroundColor: type.color + "20",
                           color: type.color,
                         }}
+                        className="dark:opacity-90"
                       >
                         {type.label}
                       </Badge>
@@ -272,31 +276,32 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                       backgroundColor: appointmentType.color + "20",
                       color: appointmentType.color,
                     }}
+                    className="dark:opacity-90"
                   >
                     {appointmentType.label}
                   </Badge>
                 ) : (
-                  <span className="text-sm text-gray-500">N/A</span>
+                  <span className="text-sm text-gray-500 dark:text-slate-500">N/A</span>
                 )}
               </div>
             </div>
           </div>
 
           {/* Staff Details */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Stethoscope className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold">Staff Details</h3>
+              <Stethoscope className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Staff Details</h3>
             </div>
             <div className="space-y-2">
               {primaryStaff && (
-                <div className="p-3 bg-white rounded-lg border">
+                <div className="p-3 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium">{primaryStaff.first_name} {primaryStaff.last_name}</p>
-                    <Badge className="bg-blue-100 text-blue-700">Primary</Badge>
+                    <p className="font-medium text-gray-900 dark:text-slate-100">{primaryStaff.first_name} {primaryStaff.last_name}</p>
+                    <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">Primary</Badge>
                   </div>
-                  <p className="text-sm text-gray-600">{primaryStaff.staff_type} {primaryStaff.specialization && `- ${primaryStaff.specialization}`}</p>
-                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-slate-400">{primaryStaff.staff_type} {primaryStaff.specialization && `- ${primaryStaff.specialization}`}</p>
+                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-slate-400">
                     <Phone className="w-4 h-4" />
                     <span>{primaryStaff.phone}</span>
                   </div>
@@ -310,13 +315,13 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                       return null;
                     }
                     return (
-                      <div key={assignedStaffMember.id} className="p-3 bg-white rounded-lg border">
+                      <div key={assignedStaffMember.id} className="p-3 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="font-medium">{assignedStaffMember.first_name} {assignedStaffMember.last_name}</p>
-                          <Badge className="bg-gray-100 text-gray-700">Staff</Badge>
+                          <p className="font-medium text-gray-900 dark:text-slate-100">{assignedStaffMember.first_name} {assignedStaffMember.last_name}</p>
+                          <Badge className="bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-slate-300">Staff</Badge>
                         </div>
-                        <p className="text-sm text-gray-600">{assignedStaffMember.staff_type} {assignedStaffMember.specialization && `- ${assignedStaffMember.specialization}`}</p>
-                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 dark:text-slate-400">{assignedStaffMember.staff_type} {assignedStaffMember.specialization && `- ${assignedStaffMember.specialization}`}</p>
+                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-slate-400">
                           <Phone className="w-4 h-4" />
                           <span>{assignedStaffMember.phone}</span>
                         </div>
@@ -326,72 +331,72 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                 </>
               )}
               {driver && (
-                <div className="p-3 bg-white rounded-lg border">
+                <div className="p-3 bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium">{driver.first_name} {driver.last_name}</p>
-                    <Badge className="bg-green-100 text-green-700 flex items-center gap-1">
+                    <p className="font-medium text-gray-900 dark:text-slate-100">{driver.first_name} {driver.last_name}</p>
+                    <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 flex items-center gap-1">
                       <Car className="w-3 h-3" />
                       Driver
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-600">{driver.staff_type}</p>
-                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 dark:text-slate-400">{driver.staff_type}</p>
+                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-600 dark:text-slate-400">
                     <Phone className="w-4 h-4" />
                     <span>{driver.phone}</span>
                   </div>
                 </div>
               )}
               {!primaryStaff && assignedStaff.length === 0 && !driver && (
-                <p className="text-sm text-gray-500 italic">No staff assigned</p>
+                <p className="text-sm text-gray-500 dark:text-slate-500 italic">No staff assigned</p>
               )}
             </div>
           </div>
 
           {/* Transportation */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Car className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold">Transportation</h3>
+              <Car className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Transportation</h3>
             </div>
             {driver ? (
-              <p className="text-sm">{driver.first_name} {driver.last_name} - {driver.phone}</p>
+              <p className="text-sm text-gray-900 dark:text-slate-100">{driver.first_name} {driver.last_name} - {driver.phone}</p>
             ) : (
-              <p className="text-sm text-gray-600">Self Transport</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">Self Transport</p>
             )}
           </div>
 
           {/* Payment Package */}
           {paymentPackage && (
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
-                <CreditCard className="w-5 h-5 text-gray-600" />
-                <h3 className="text-lg font-semibold">Payment Package</h3>
+                <CreditCard className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Payment Package</h3>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     {services && paymentPackage.service_id && (
-                      <p className="font-medium">
+                      <p className="font-medium text-gray-900 dark:text-slate-100">
                         {services.find((s) => s.id === paymentPackage.service_id)?.name || "Service"} Package #{paymentPackage.id}
                       </p>
                     )}
                     {!paymentPackage.service_id && (
-                      <p className="font-medium">Package #{paymentPackage.id}</p>
+                      <p className="font-medium text-gray-900 dark:text-slate-100">Package #{paymentPackage.id}</p>
                     )}
                   </div>
                   <Badge
                     className={
                       paymentPackage.status === "active"
-                        ? "bg-green-100 text-green-700"
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
                         : paymentPackage.status === "completed"
-                        ? "bg-gray-100 text-gray-700"
-                        : "bg-red-100 text-red-700"
+                        ? "bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-slate-300"
+                        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
                     }
                   >
                     {paymentPackage.status}
                   </Badge>
                 </div>
-                <div className="text-sm text-gray-600 space-y-1">
+                <div className="text-sm text-gray-600 dark:text-slate-400 space-y-1">
                   {paymentPackage.package_type === "session-based" && paymentPackage.total_sessions && (
                     <p>
                       Usage: {sessionsUsed || 0} / {paymentPackage.total_sessions} sessions
@@ -416,46 +421,77 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
                     <p>Renewal Date: {formatCrmDate(paymentPackage.renewal_date)}</p>
                   )}
                 </div>
-                <Link
-                  to={`/payment_packages/${paymentPackage.id}/show`}
-                  className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  View Package Details
-                </Link>
+                <div className="flex items-center gap-3 mt-3">
+                  <Button
+                    onClick={() => setIsPaymentDialogOpen(true)}
+                    className="bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600"
+                    size="sm"
+                  >
+                    <DollarSign className="w-4 h-4 mr-2" />
+                    Create Payment
+                  </Button>
+                  <Link
+                    to={`/payment_packages/${paymentPackage.id}/show`}
+                    className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View Package Details
+                  </Link>
+                </div>
               </div>
             </div>
           )}
 
+          {/* Payment Creation Section (when no package linked) */}
+          {!paymentPackage && (
+            <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-slate-600">
+              <div className="flex items-center gap-2 mb-3">
+                <CreditCard className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Payment</h3>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
+                No payment package linked to this appointment. Create a payment by selecting a package or leave it empty for a standalone payment.
+              </p>
+              <Button
+                onClick={() => setIsPaymentDialogOpen(true)}
+                variant="outline"
+                size="sm"
+              >
+                <DollarSign className="w-4 h-4 mr-2" />
+                Create Payment
+              </Button>
+            </div>
+          )}
+
           {/* Notes and Instructions */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
-              <FileText className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold">Notes and Instructions</h3>
+              <FileText className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Notes and Instructions</h3>
             </div>
             <div className="space-y-3">
               {appointment.mini_notes && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Brief Notes</p>
-                  <p className="text-sm text-gray-600">{appointment.mini_notes}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Brief Notes</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">{appointment.mini_notes}</p>
                 </div>
               )}
               {appointment.full_notes && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">Detailed Notes</p>
-                  <p className="text-sm text-gray-600">{appointment.full_notes}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Detailed Notes</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">{appointment.full_notes}</p>
                 </div>
               )}
               {appointment.pickup_instructions && (
-                <div className="border border-orange-200 rounded-lg p-3 bg-orange-50">
-                  <p className="text-sm font-medium text-orange-700 mb-1">Pickup Instructions</p>
-                  <p className="text-sm text-orange-700">{appointment.pickup_instructions}</p>
+                <div className="border border-orange-200 dark:border-orange-800 rounded-lg p-3 bg-orange-50 dark:bg-orange-900/20">
+                  <p className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-1">Pickup Instructions</p>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">{appointment.pickup_instructions}</p>
                 </div>
               )}
               {appointment.notes && (
                 <div>
-                  <p className="text-sm font-medium text-gray-700 mb-1">General Notes</p>
-                  <p className="text-sm text-gray-600">{appointment.notes}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">General Notes</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">{appointment.notes}</p>
                 </div>
               )}
             </div>
@@ -464,7 +500,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
         </div>
 
         {/* Footer */}
-        <div className="bg-gray-50 border-t border-gray-200 p-6">
+        <div className="bg-gray-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 p-6">
           <div className="flex items-center justify-end gap-3">
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="w-4 h-4 mr-2" />
@@ -476,7 +512,7 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
             </Button>
             <Button
               onClick={() => onEdit(appointment)}
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
             >
               <Edit className="w-4 h-4 mr-2" />
               Edit
@@ -491,6 +527,14 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
           </div>
         </div>
       </div>
+
+      {/* Payment Creation Dialog */}
+      <PaymentCreateDialog
+        open={isPaymentDialogOpen}
+        onOpenChange={setIsPaymentDialogOpen}
+        defaultPackageId={appointment.payment_package_id}
+        defaultAppointmentId={appointment.id}
+      />
     </>
   );
 };

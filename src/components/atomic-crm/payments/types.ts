@@ -22,7 +22,8 @@ export type PaymentPackage = {
 } & Pick<RaRecord, "id">;
 
 export type PaymentTransaction = {
-  payment_package_id: Identifier;
+  payment_package_id?: Identifier | null; // Optional for standalone payments (one-off services)
+  appointment_id?: Identifier | null; // Optional, used to link standalone payments to appointments
   amount_received: number;
   bank_charge: number;
   net_amount: number;

@@ -41,6 +41,7 @@ const validateNonNegative = (value: any) => {
 type PaymentTransactionFormProps = {
   record?: PaymentTransaction | null;
   defaultPackageId?: string | number;
+  defaultAppointmentId?: string | number;
 };
 
 const paymentMethodChoices = [
@@ -51,13 +52,26 @@ const paymentMethodChoices = [
   { id: "Cash", name: "Cash" },
 ];
 
-export const PaymentTransactionForm = ({ record, defaultPackageId }: PaymentTransactionFormProps) => {
-  const { setValue } = useFormContext();
+export const PaymentTransactionForm = ({ record, defaultPackageId, defaultAppointmentId }: PaymentTransactionFormProps) => {
+  const { setValue, getValues } = useFormContext();
+  
+  // Custom validation: require at least one of package_id or appointment_id
+  const validatePackageOrAppointment = (value: any) => {
+    const formValues = getValues();
+    const packageId = value || formValues?.payment_package_id;
+    const appointmentId = formValues?.appointment_id || defaultAppointmentId;
+    
+    if (!packageId && !appointmentId) {
+      return "Either a payment package or appointment must be selected";
+    }
+    return undefined;
+  };
   const [useDefaultBankCharge, setUseDefaultBankCharge] = useState(true);
   const [showCalculationBreakdown, setShowCalculationBreakdown] = useState(false);
 
   // Watch form values
   const paymentPackageId = useWatch({ name: "payment_package_id" }) || defaultPackageId;
+  const appointmentId = useWatch({ name: "appointment_id" });
   const amountReceived = useWatch({ name: "amount_received" });
   const paymentMethod = useWatch({ name: "payment_method" });
   const bankCharge = useWatch({ name: "bank_charge" });
@@ -129,15 +143,24 @@ export const PaymentTransactionForm = ({ record, defaultPackageId }: PaymentTran
     }
   }, [defaultPackageId, paymentPackageId, setValue]);
 
+  // Set default appointment if provided
+  useEffect(() => {
+    if (defaultAppointmentId && !appointmentId) {
+      setValue("appointment_id", defaultAppointmentId);
+    }
+  }, [defaultAppointmentId, appointmentId, setValue]);
+
   const netAmount = amountReceived && bankCharge ? amountReceived - bankCharge : 0;
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Payment Package Selection */}
+      {/* Payment Package Selection (Optional) */}
       <Card>
         <CardHeader>
-          <CardTitle>Payment Package</CardTitle>
-          <CardDescription>Select the payment package for this transaction</CardDescription>
+          <CardTitle>Payment Package (Optional)</CardTitle>
+          <CardDescription>
+            Select a payment package, or leave empty for a standalone payment
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <ReferenceInput
@@ -159,8 +182,8 @@ export const PaymentTransactionForm = ({ record, defaultPackageId }: PaymentTran
                 // Return: "Package Name - Patient Name - AED Amount"
                 return `${packageName} - ${patientName} - AED ${pkg.total_amount.toLocaleString()}`;
               }}
-              helperText={false}
-              validate={required()}
+              helperText="Leave empty to create a standalone payment"
+              validate={validatePackageOrAppointment}
             />
           </ReferenceInput>
 
