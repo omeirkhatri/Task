@@ -965,7 +965,23 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/bug-reports/index.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/bug-reports/BugReportsPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/bug-reports/BugReportShow.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/bug-reports/BugReportPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/bug-reports/BugReportList.tsx",
           "type": "registry:component"
         },
         {

@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { X, User, Calendar, Clock, Stethoscope, Car, FileText, MapPin, Phone, ExternalLink, Printer, Copy, Edit, Trash2, CreditCard, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { Appointment, PaymentPackage, Service } from "../types";
+import type { Appointment, PaymentPackage, Service, PaymentTransaction } from "../types";
 import { APPOINTMENT_STATUSES } from "./types";
 import { useAppointmentTypes } from "./useAppointmentTypes";
-import { useGetList } from "ra-core";
+import { useGetList, useRefresh } from "ra-core";
 import type { Contact, Staff } from "../types";
 import { formatCrmDate, formatCrmTime } from "../misc/timezone";
 import { Link } from "react-router";
@@ -36,6 +36,8 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
   });
   const appointmentTypes = useAppointmentTypes();
   
+  const refresh = useRefresh();
+  
   // Fetch payment package if linked
   const { data: paymentPackages } = useGetList<PaymentPackage>("payment_packages", {
     pagination: { page: 1, perPage: 1 },
@@ -44,6 +46,13 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
   
   const paymentPackage = paymentPackages?.[0];
   
+  // Fetch standalone payments linked to this appointment
+  const { data: standalonePayments } = useGetList<PaymentTransaction>("payment_transactions", {
+    pagination: { page: 1, perPage: 100 },
+    sort: { field: "date_paid", order: "DESC" },
+    filter: appointment?.id ? { appointment_id: appointment.id, "payment_package_id@is": null } : { id: -1 }, // Only standalone payments
+  }, { enabled: !!appointment?.id });
+  
   // Fetch service for payment package
   const { data: services } = useGetList<Service>("services", {
     pagination: { page: 1, perPage: 1000 },
@@ -51,9 +60,12 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
   
   // Get package usage if package exists
   const { sessionsUsed, hoursUsed } = usePackageUsage(paymentPackage?.id);
-
+  
   // State for payment creation dialog
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  
+  // Calculate total standalone payments
+  const totalStandaloneAmount = standalonePayments?.reduce((sum, payment) => sum + (payment.amount_received || 0), 0) || 0;
 
   // Get all assigned staff from staff_ids array
   const assignedStaff = React.useMemo(() => {
@@ -442,18 +454,63 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
             </div>
           )}
 
-          {/* Payment Creation Section (when no package linked) */}
+          {/* Payment Section (when no package linked or showing standalone payments) */}
           {!paymentPackage && (
             <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-slate-600">
               <div className="flex items-center gap-2 mb-3">
                 <CreditCard className="w-5 h-5 text-gray-600 dark:text-slate-400" />
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Payment</h3>
               </div>
-              <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
-                No payment package linked to this appointment. Create a payment by selecting a package or leave it empty for a standalone payment.
-              </p>
+              
+              {/* Show standalone payments if any exist */}
+              {standalonePayments && standalonePayments.length > 0 ? (
+                <div className="space-y-3 mb-3">
+                  <div className="bg-white dark:bg-slate-700 rounded-lg p-3 border border-gray-200 dark:border-slate-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-medium text-gray-900 dark:text-slate-100">Standalone Payments</p>
+                      <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                        {standalonePayments.length} payment{standalonePayments.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {standalonePayments.map((payment) => (
+                        <div key={payment.id} className="flex items-center justify-between text-sm">
+                          <div>
+                            <p className="text-gray-900 dark:text-slate-100">
+                              {formatCrmDate(payment.date_paid)} - {payment.payment_method}
+                            </p>
+                            {payment.invoice_number && (
+                              <p className="text-xs text-gray-500 dark:text-slate-400">
+                                Invoice: {payment.invoice_number}
+                              </p>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-900 dark:text-slate-100">
+                            AED {payment.amount_received.toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                      <div className="pt-2 border-t border-gray-200 dark:border-slate-600">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-gray-900 dark:text-slate-100">Total Paid</p>
+                          <p className="font-semibold text-gray-900 dark:text-slate-100">
+                            AED {totalStandaloneAmount.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">
+                  No payment package linked to this appointment. Create a payment by selecting a package or leave it empty for a standalone payment.
+                </p>
+              )}
+              
               <Button
-                onClick={() => setIsPaymentDialogOpen(true)}
+                onClick={() => {
+                  setIsPaymentDialogOpen(true);
+                }}
                 variant="outline"
                 size="sm"
               >
@@ -531,7 +588,13 @@ export const AppointmentDetailsDrawer: React.FC<AppointmentDetailsDrawerProps> =
       {/* Payment Creation Dialog */}
       <PaymentCreateDialog
         open={isPaymentDialogOpen}
-        onOpenChange={setIsPaymentDialogOpen}
+        onOpenChange={(open) => {
+          setIsPaymentDialogOpen(open);
+          if (!open) {
+            // Refresh data when dialog closes (payment might have been created)
+            refresh();
+          }
+        }}
         defaultPackageId={appointment.payment_package_id}
         defaultAppointmentId={appointment.id}
       />
