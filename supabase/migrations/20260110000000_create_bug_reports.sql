@@ -52,22 +52,32 @@ CREATE POLICY "Users can create bug reports"
     TO authenticated
     WITH CHECK (true);
 
--- Users can view their own bug reports
-CREATE POLICY "Users can view their own bug reports"
+-- All authenticated users can view all bug reports
+CREATE POLICY "Users can view all bug reports"
     ON "public"."bug_reports"
     FOR SELECT
     TO authenticated
-    USING (auth.uid() = (SELECT user_id FROM sales WHERE id = reported_by LIMIT 1));
+    USING (true);
 
--- Users can update their own bug reports (only if status is 'open')
-CREATE POLICY "Users can update their own open bug reports"
+-- Users can update their own bug reports (any status)
+CREATE POLICY "Users can update their own bug reports"
     ON "public"."bug_reports"
     FOR UPDATE
     TO authenticated
     USING (
         auth.uid() = (SELECT user_id FROM sales WHERE id = reported_by LIMIT 1)
-        AND status = 'open'
+    )
+    WITH CHECK (
+        auth.uid() = (SELECT user_id FROM sales WHERE id = reported_by LIMIT 1)
     );
+
+-- All authenticated users can update bug report status (to mark as fixed/resolved)
+CREATE POLICY "Users can update bug report status"
+    ON "public"."bug_reports"
+    FOR UPDATE
+    TO authenticated
+    USING (true)
+    WITH CHECK (true);
 
 -- Add comment to document the table
 COMMENT ON TABLE "public"."bug_reports" IS 'Stores bug reports submitted by users with screenshots and reproduction steps';

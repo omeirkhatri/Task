@@ -1,14 +1,20 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useCreate, useGetIdentity, useNotify } from "ra-core";
+import { useCreate, useGetIdentity, useNotify, useGetList } from "ra-core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "../providers/supabase/supabase";
-import { Upload, X, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { Upload, X, Image as ImageIcon, CheckCircle2, Bug, List } from "lucide-react";
+import { BugReportList } from "./BugReportList";
+import { SearchInput } from "@/components/admin/search-input";
+import { SelectInput } from "@/components/admin/select-input";
+import { List as ListComponent } from "@/components/admin/list";
+import type { BugReport } from "../types";
 
 type BugReportFormData = {
   title: string;
@@ -18,7 +24,33 @@ type BugReportFormData = {
   screenshot_urls: string[];
 };
 
-export const BugReportPage = () => {
+const filters = [
+  <SearchInput key="search" source="q" placeholder="Search bug reports..." />,
+  <SelectInput
+    key="status-filter"
+    source="status"
+    label="Status"
+    choices={[
+      { id: "open", name: "Open" },
+      { id: "in_progress", name: "In Progress" },
+      { id: "resolved", name: "Resolved" },
+      { id: "closed", name: "Closed" },
+    ]}
+  />,
+  <SelectInput
+    key="priority-filter"
+    source="priority"
+    label="Priority"
+    choices={[
+      { id: "low", name: "Low" },
+      { id: "medium", name: "Medium" },
+      { id: "high", name: "High" },
+      { id: "critical", name: "Critical" },
+    ]}
+  />,
+];
+
+const BugReportForm = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { identity } = useGetIdentity();
   const [create] = useCreate();
   const notify = useNotify();
@@ -135,7 +167,15 @@ export const BugReportPage = () => {
             setSubmitted(true);
             reset();
             setScreenshots([]);
-            setTimeout(() => setSubmitted(false), 5000);
+            // Call onSuccess callback to refresh list and switch tabs
+            if (onSuccess) {
+              setTimeout(() => {
+                onSuccess();
+                setSubmitted(false);
+              }, 2000);
+            } else {
+              setTimeout(() => setSubmitted(false), 5000);
+            }
           },
           onError: (error: unknown) => {
             const errorMessage =
@@ -159,35 +199,32 @@ export const BugReportPage = () => {
 
   if (submitted) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center justify-center py-12">
-              <CheckCircle2 className="w-16 h-16 text-green-600 dark:text-green-400 mb-4" />
-              <h2 className="text-2xl font-bold text-green-900 dark:text-green-100 mb-2">
-                Bug Report Submitted!
-              </h2>
-              <p className="text-green-700 dark:text-green-300 text-center">
-                Thank you for reporting this issue. Our team will review it and get back to you soon.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20">
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center py-12">
+            <CheckCircle2 className="w-16 h-16 text-green-600 dark:text-green-400 mb-4" />
+            <h2 className="text-2xl font-bold text-green-900 dark:text-green-100 mb-2">
+              Bug Report Submitted!
+            </h2>
+            <p className="text-green-700 dark:text-green-300 text-center">
+              Thank you for reporting this issue. Our team will review it and get back to you soon.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold">Report a Bug</CardTitle>
-          <CardDescription>
-            Help us improve by reporting any issues you encounter. Please provide as much detail as
-            possible.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold">Report a Bug</CardTitle>
+        <CardDescription>
+          Help us improve by reporting any issues you encounter. Please provide as much detail as
+          possible.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Title */}
             <div>
@@ -365,6 +402,54 @@ export const BugReportPage = () => {
           </form>
         </CardContent>
       </Card>
+    );
+};
+
+export const BugReportPage = () => {
+  const { identity } = useGetIdentity();
+  const [activeTab, setActiveTab] = useState("submit");
+  const { data: bugReports, isLoading, refetch } = useGetList<BugReport>("bug_reports", {
+    pagination: { page: 1, perPage: 50 },
+    sort: { field: "created_at", order: "DESC" },
+    // Show all bug reports, not just user's own
+  });
+
+  const handleFormSuccess = () => {
+    refetch();
+    setActiveTab("view");
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Bug Reports</h1>
+        <p className="text-muted-foreground">
+          Report bugs or view all submitted bug reports
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="submit" className="flex items-center gap-2">
+            <Bug className="w-4 h-4" />
+            Report a Bug
+          </TabsTrigger>
+          <TabsTrigger value="view" className="flex items-center gap-2">
+            <List className="w-4 h-4" />
+            All Bug Reports ({bugReports?.length || 0})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="submit" className="mt-6">
+          <BugReportForm onSuccess={handleFormSuccess} />
+        </TabsContent>
+
+        <TabsContent value="view" className="mt-6">
+          <ListComponent resource="bug_reports" filters={filters}>
+            <BugReportList />
+          </ListComponent>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

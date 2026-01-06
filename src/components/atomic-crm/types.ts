@@ -457,6 +457,21 @@ export type AppointmentStaffAssignment = {
   created_at: string;
 } & Pick<RaRecord, "id">;
 
+export type BugReport = {
+  reported_by: Identifier;
+  title: string;
+  description: string;
+  steps_to_reproduce?: string | null;
+  screenshot_urls?: string[];
+  status: "open" | "in_progress" | "resolved" | "closed";
+  priority: "low" | "medium" | "high" | "critical";
+  browser_info?: string | null;
+  device_info?: string | null;
+  url?: string | null;
+  created_at: string;
+  updated_at: string;
+} & Pick<RaRecord, "id">;
+
 // Payment tracking types
 export type PaymentPackage = {
   patient_id: Identifier;

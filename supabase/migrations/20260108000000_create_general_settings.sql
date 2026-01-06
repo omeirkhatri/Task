@@ -18,7 +18,12 @@ CREATE TABLE IF NOT EXISTS "public"."general_settings" (
 -- Enable RLS
 ALTER TABLE "public"."general_settings" ENABLE ROW LEVEL SECURITY;
 
--- Create policies for general_settings
+-- Create policies for general_settings (drop first if they exist)
+DROP POLICY IF EXISTS "Enable read access for authenticated users" ON "public"."general_settings";
+DROP POLICY IF EXISTS "Enable insert for authenticated users" ON "public"."general_settings";
+DROP POLICY IF EXISTS "Enable update for authenticated users" ON "public"."general_settings";
+DROP POLICY IF EXISTS "Enable delete for authenticated users" ON "public"."general_settings";
+
 CREATE POLICY "Enable read access for authenticated users"
 ON "public"."general_settings"
 AS PERMISSIVE
@@ -55,6 +60,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."general_settings" TO "se
 CREATE INDEX IF NOT EXISTS "general_settings_setting_key_idx" ON "public"."general_settings" ("setting_key");
 
 -- Add trigger to update updated_at timestamp
+DROP TRIGGER IF EXISTS update_general_settings_updated_at ON "public"."general_settings";
 CREATE TRIGGER update_general_settings_updated_at BEFORE UPDATE ON "public"."general_settings"
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

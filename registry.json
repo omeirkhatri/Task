@@ -965,6 +965,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/bug-reports/BugReportPage.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/appointments/useAppointmentTypes.ts",
           "type": "registry:component"
         },
