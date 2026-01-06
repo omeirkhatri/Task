@@ -1068,6 +1068,11 @@ const dataProviderWithCustomMethods = {
     return baseDataProvider.update(mappedResource, params);
   },
   async delete(resource: string, params: { id: Identifier; meta?: { deleteFutureOnly?: boolean } }) {
+    // Handle sales deletion through Edge Function to delete auth user
+    if (resource === "sales") {
+      return this.salesDelete(params.id);
+    }
+    
     // For deletes, use the base table instead of the view
     let mappedResource = mapResourceName(resource);
     if (mappedResource === "contacts_summary") {
@@ -1311,17 +1316,78 @@ const dataProviderWithCustomMethods = {
     };
   },
   async salesCreate(body: SalesFormData) {
-    const { data, error } = await supabase.functions.invoke<Sale>("users", {
+    const { data, error } = await supabase.functions.invoke<{ data: Sale }>("users", {
       method: "POST",
       body,
     });
 
-    if (!data || error) {
-      logger.error("salesCreate.error", error, { context: "dataProvider" });
-      throw new Error("Failed to create account manager");
+    if (error) {
+      // Log the full error object for debugging
+      const errorAny = error as any;
+      console.error("salesCreate.error - Full error object:", {
+        error,
+        errorMessage: error.message,
+        errorName: error.name,
+        errorStack: error.stack,
+        errorAny,
+        context: errorAny?.context,
+        status: errorAny?.context?.status,
+        response: errorAny?.context?.response,
+      });
+      
+      logger.error("salesCreate.error", error, { 
+        context: "dataProvider",
+        errorDetails: errorAny,
+      });
+      
+      // Try to extract error message from the error response
+      let errorMessage = "Failed to create account manager";
+      
+      // FunctionsHttpError structure: error.context contains response info
+      if (errorAny?.context) {
+        const context = errorAny.context;
+        
+        // Try to get message from context directly
+        if (context?.message) {
+          errorMessage = context.message;
+        }
+        
+        // Check status codes
+        if (context?.status === 401) {
+          errorMessage = "You do not have permission to create users. Administrator access required.";
+        } else if (context?.status === 400) {
+          errorMessage = context?.message || "Invalid request. Please check all required fields are filled.";
+        } else if (context?.status === 500) {
+          errorMessage = context?.message || "Server error occurred while creating user. Please try again.";
+        }
+      }
+      
+      // Try to extract from error message if it contains JSON
+      if (error instanceof Error && error.message) {
+        try {
+          // Look for JSON in the error message
+          const jsonMatch = error.message.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.message) {
+              errorMessage = parsed.message;
+            }
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    return data;
+    if (!data) {
+      logger.error("salesCreate.error", "No data returned", { context: "dataProvider" });
+      throw new Error("Failed to create account manager: No data returned");
+    }
+
+    // Edge Function returns { data: sale }, so extract the sale object
+    return data.data || data;
   },
   async salesUpdate(
     id: Identifier,
@@ -1352,6 +1418,69 @@ const dataProviderWithCustomMethods = {
     }
 
     return data;
+  },
+  async salesDelete(id: Identifier) {
+    const { error } = await supabase.functions.invoke<{ message: string }>(
+      "users",
+      {
+        method: "DELETE",
+        body: {
+          sales_id: id,
+        },
+      },
+    );
+
+    if (error) {
+      logger.error("salesDelete.error", error, { context: "dataProvider", id });
+      
+      // Try to extract error message from the error response
+      let errorMessage = "Failed to delete user";
+      const errorAny = error as any;
+      
+      // Log the full error structure for debugging
+      if (process.env.NODE_ENV === "development") {
+        console.error("Full error object:", JSON.stringify(errorAny, null, 2));
+      }
+      
+      // Try to extract from error context
+      if (errorAny?.context) {
+        const context = errorAny.context;
+        if (context?.message) {
+          errorMessage = context.message;
+        } else if (context?.status === 401) {
+          errorMessage = "You do not have permission to delete users. Administrator access required.";
+        } else if (context?.status === 400) {
+          errorMessage = "Cannot delete your own account";
+        } else if (context?.status === 404) {
+          errorMessage = "User not found";
+        } else if (context?.status === 500) {
+          errorMessage = "Server error occurred while deleting user. Please check the Edge Function logs.";
+        }
+      }
+      
+      // Try to extract from error message if it contains JSON
+      if (error instanceof Error && error.message) {
+        try {
+          const match = error.message.match(/\{.*\}/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (parsed.message) {
+              errorMessage = parsed.message;
+            } else if (parsed.status === 401) {
+              errorMessage = "You do not have permission to delete users. Administrator access required.";
+            } else if (parsed.status === 500) {
+              errorMessage = parsed.message || "Server error occurred while deleting user. Please check the Edge Function logs.";
+            }
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    return { data: { id } };
   },
   async updatePassword(id: Identifier) {
     const { data: passwordUpdated, error } =
